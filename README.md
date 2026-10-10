@@ -12,7 +12,7 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 - **114 Verse** in 9 Themen (Grundlagen, Vertrauen, Mut, Liebe, Licht & Segen, Tief verwurzelt, Freude, Hoffnung, Gnade), darunter Vaterunser und Aaronitischer Segen.
 - **Aufgaben:** fehlendes Wort wählen, Lücken füllen, Vers aus Wortkacheln zusammensetzen, falsches Wort finden,
   Bibelstelle zuordnen und den Vers aus dem Gedächtnis schreiben (nur den ersten Buchstaben jedes Wortes tippen).
-- **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag.
+- **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag. Höhe und Wurzeltiefe werden realistisch angezeigt (Keimling: 10 cm hoch, 4 cm Wurzeln; nach einem Jahr: etwa 7,6 m hoch, 2,4 m Wurzeln).
   Die Wurzeln reichen tiefer, je länger deine Serie ist. Jeder gemeisterte Vers hängt als Frucht am Baum.
   Wenn du heute noch nicht gelernt hast, hat der Baum Durst.
 - **Motivation:** tägliche Serie (blaue Flamme), Tagesziel, drei Tagesaufgaben, Perlen, Regenwolken als Serienschutz,

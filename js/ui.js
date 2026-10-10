@@ -649,7 +649,8 @@ W.ui = (() => {
 
   function renderTree(view) {
     const stage = st.treeStage(), days = st.totalDays();
-    const depth = (st.rootGrowth() * 0.42).toFixed(1).replace('.', ',');
+    const size = W.tree.sizes(days, st.growth(), st.rootGrowth());
+    const fmt = m => m < 1 ? `${Math.max(1, Math.round(m * 100))} cm` : `${m.toFixed(1).replace('.', ',')} m`;
     const thirsty = !st.learnedToday() && days > 0;
     const vod = verseOfDay();
     view.innerHTML = header('<span class="l1">Dein</span><br>Glaubensbaum') + `
@@ -666,7 +667,8 @@ W.ui = (() => {
       ${questsHTML('m-only')}
       <div class="tree-stats">
         <div><b>${days}</b><span>Lerntage</span></div>
-        <div><b>${depth} m</b><span>Wurzeltiefe</span></div>
+        <div><b>${days ? fmt(size.height) : '–'}</b><span>Höhe</span></div>
+        <div><b>${fmt(size.depth)}</b><span>Wurzeltiefe</span></div>
         <div><b>${st.masteredCount()}</b><span>Früchte</span></div>
       </div>
       ${stage.next ? `<section class="card next-stage"><div class="ns-top"><span>Nächste Stufe: <b>${stage.next.name}</b></span><span class="muted">noch ${stage.next.left} ${stage.next.left === 1 ? 'Lerntag' : 'Lerntage'}</span></div>

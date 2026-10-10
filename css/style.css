@@ -121,9 +121,9 @@ p { margin: 0; }
 .q-gems { display: flex; align-items: center; gap: 2px; font-weight: 600; color: var(--ink-2); font-size: 14px; }
 .q-gems .ic { width: 18px; height: 18px; }
 
-.tree-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tree-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .tree-stats div { background: var(--card); border-radius: 18px; padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
-.tree-stats b { display: block; font-size: 22px; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tree-stats b { display: block; font-size: 19px; white-space: nowrap; color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
 .tree-stats span { font-size: 13px; color: var(--muted); }
 .next-stage .ns-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; font-size: 15px; }
 .next-stage b { color: var(--ink); }
