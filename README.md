@@ -5,8 +5,11 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 
 ## So funktioniert’s
 
-- **Lernpfad:** 45 bekannte Verse in 9 Einheiten (Vertrauen, Mut, Liebe, Licht, Tief verwurzelt …).
-  Jeder Vers hat 3 Lektionen: kennenlernen, festigen, meistern. Dazu gibt es Schatztruhen und eine Wiederholung am Ende jeder Einheit.
+- **Freie Verswahl:** Du entscheidest, welchen Vers du lernst. Alle 45 Verse in 9 Themen (Vertrauen, Mut, Liebe, Licht, Tief verwurzelt …)
+  sind von Anfang an offen. Deinen „Lernvers“ wechselst du jederzeit über „Ändern“, im Lernpfad oder unter „Alle Verse“ (mit Suche und Filtern).
+  Eigene Verse in beliebiger Übersetzung lassen sich hinzufügen und werden genauso geübt.
+- **Lektionen:** Jeder Vers hat 3 Lektionen: kennenlernen, festigen, meistern. Schatztruhen öffnen sich ab 3 gemeisterten Versen eines Themas,
+  die Themen-Wiederholung, sobald alle 5 sitzen.
 - **Aufgaben:** fehlendes Wort wählen, Lücken füllen, Vers aus Wortkacheln zusammensetzen, falsches Wort finden,
   Bibelstelle zuordnen und den Vers aus dem Gedächtnis schreiben (nur den ersten Buchstaben jedes Wortes tippen).
 - **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag.
@@ -50,4 +53,4 @@ node tools/build-single.mjs dist/glaubensbaum.html
 | `js/ui.js` | Bildschirme: Baum, Lernen, Profil, Dialoge; auf dem PC mit Seitenleiste und rechter Spalte |
 | `js/sound.js` | Töne und Vorlesen |
 
-Bibeltext: Lutherbibel 1912 (gemeinfrei), Rechtschreibung behutsam angepasst.
+Bibeltext: Elberfelder Bibel 1905 (unrevidiert, gemeinfrei). Der Gottesname „Jehova“ ist als „HERR“ wiedergegeben, die Rechtschreibung ist angepasst (daß → dass). Die revidierte Elberfelder (1985/2006) ist urheberrechtlich geschützt und deshalb nicht enthalten; eigene Verse in jeder Übersetzung lassen sich in der App selbst hinzufügen.

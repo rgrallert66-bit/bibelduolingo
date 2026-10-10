@@ -31,28 +31,55 @@ W.store = (() => {
       quests: { date: null, items: [] },
       ach: {},         // Erfolg → Datum
       stats: { lessons: 0, perfect: 0, correct: 0, answered: 0, bestCombo: 0, reviews: 0 },
-      goalDate: null
+      goalDate: null,
+      focus: null,     // Vers, den du gerade lernen willst (frei gewählt)
+      custom: []       // eigene Verse { id, ref, text }
     };
   }
 
+  W.OWN_UNIT = { id: 'own', title: 'Eigene Verse', subtitle: 'Von dir hinzugefügt', color: '#3d7be0', dark: '#2a62bf', verses: [] };
   let s = load();
   function load() {
+    let st = defaults();
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) return Object.assign(defaults(), JSON.parse(raw));
+      if (raw) st = Object.assign(defaults(), JSON.parse(raw));
     } catch (e) {}
-    return defaults();
+    registerCustom(st.custom);
+    return st;
+  }
+
+  // Eigene Verse als eigene „Einheit“ einhängen
+  function registerCustom(list) {
+    W.OWN_UNIT.verses.forEach(v => { delete W.VERSES[v.id]; });
+    W.OWN_UNIT.verses = (list || []).map((c, i) => Object.assign({}, c, { unit: 'own', unitIndex: W.UNITS.length, index: i, own: true }));
+    W.OWN_UNIT.verses.forEach(v => { W.VERSES[v.id] = v; });
+  }
+  const allVerses = () => W.VERSE_LIST.concat(W.OWN_UNIT.verses);
+  const unitOf = v => v.own ? W.OWN_UNIT : W.UNITS[v.unitIndex];
+
+  function addCustom(ref, text) {
+    const id = 'own-' + Date.now().toString(36);
+    s.custom.push({ id, ref: ref.trim(), text: text.trim().replace(/\s+/g, ' ') });
+    registerCustom(s.custom); save();
+    return W.VERSES[id];
+  }
+  function removeCustom(id) {
+    s.custom = s.custom.filter(c => c.id !== id);
+    delete s.progress[id]; delete s.mem[id];
+    if (s.focus === id) s.focus = null;
+    registerCustom(s.custom); save();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
   const get = () => s;
   function set(patch) { Object.assign(s, patch); save(); }
-  function reset() { s = defaults(); save(); }
+  function reset() { s = defaults(); registerCustom([]); save(); }
 
   // ---------- Fortschritt ----------
   const stageOf = id => s.progress[id] || 0;
   const isMastered = id => stageOf(id) >= STAGES;
-  const masteredCount = () => W.VERSE_LIST.filter(v => isMastered(v.id)).length;
-  const startedVerses = () => W.VERSE_LIST.filter(v => stageOf(v.id) > 0);
+  const masteredCount = () => allVerses().filter(v => isMastered(v.id)).length;
+  const startedVerses = () => allVerses().filter(v => stageOf(v.id) > 0);
   const totalDays = () => Object.keys(s.days).length;
   const learnedToday = () => s.lastActive === today();
   const xpToday = () => s.days[today()] || 0;
@@ -67,17 +94,26 @@ W.store = (() => {
       });
       nodes.push({ kind: 'review', id: 'review-' + u.id, unit: u });
     });
-    let blocked = false;
+    // Alle Verse sind frei wählbar. Truhe: ab 3 gemeisterten Versen der Einheit, Wiederholung: wenn alle 5 sitzen.
+    const fid = focusId();
     nodes.forEach(n => {
-      n.done = n.kind === 'verse' ? isMastered(n.id) : n.kind === 'chest' ? !!s.chests[n.id] : !!s.unitsDone[n.unit.id];
-      n.locked = blocked;
-      n.current = !blocked && !n.done;
-      if (!n.done) blocked = true;
+      const mastered = n.unit.verses.filter(v => isMastered(v.id)).length;
+      if (n.kind === 'verse') { n.done = isMastered(n.id); n.locked = false; n.current = n.id === fid; }
+      else if (n.kind === 'chest') { n.done = !!s.chests[n.id]; n.locked = mastered < 3; n.current = !n.locked && !n.done; }
+      else { n.done = !!s.unitsDone[n.unit.id]; n.locked = mastered < n.unit.verses.length; n.current = !n.locked && !n.done; }
     });
     return nodes;
   }
-  const currentNode = () => pathNodes().find(n => n.current) || null;
-  const unitUnlocked = u => { const n = pathNodes().find(x => x.unit.id === u.id); return n && !n.locked; };
+
+  // Dein Lernvers: frei gewählt, sonst der nächste noch nicht gemeisterte Vers
+  function focusId() {
+    if (s.focus && W.VERSES[s.focus] && !isMastered(s.focus)) return s.focus;
+    const next = allVerses().find(v => stageOf(v.id) > 0 && !isMastered(v.id)) || allVerses().find(v => !isMastered(v.id));
+    return next ? next.id : null;
+  }
+  const focusVerse = () => { const id = focusId(); return id ? W.VERSES[id] : null; };
+  function setFocus(id) { s.focus = id; save(); }
+  const currentNode = () => { const v = focusVerse(); return v ? { kind: 'verse', id: v.id, verse: v, unit: unitOf(v), done: false, locked: false, current: true } : null; };
 
   // ---------- Baum ----------
   const growth = (days = totalDays()) => days <= 0 ? 0.55 : Math.min(8.4, 1 + 7.4 * (1 - Math.exp(-(days - 1) / 30)));
@@ -174,7 +210,7 @@ W.store = (() => {
     { id: 'xp1000', icon: 'bolt', title: 'Tausend EP', text: '1000 Erfahrungspunkte gesammelt', test: () => s.xp >= 1000 },
     { id: 'tree30', icon: 'tree', title: 'Kräftiger Baum', text: 'An 30 Tagen gelernt', test: () => totalDays() >= 30 },
     { id: 'streak100', icon: 'flame', title: 'Hundert Tage', text: '100 Tage in Folge gelernt', test: () => s.streak >= 100 },
-    { id: 'all', icon: 'crown', title: 'Ganzer Garten', text: 'Alle 45 Verse gemeistert', test: () => masteredCount() >= W.VERSE_LIST.length }
+    { id: 'all', icon: 'crown', title: 'Ganzer Garten', text: 'Alle 45 Verse gemeistert', test: () => W.VERSE_LIST.every(v => isMastered(v.id)) }
   ];
   function checkAchievements(extra = {}) {
     const fresh = [];
@@ -215,7 +251,7 @@ W.store = (() => {
       const id = r.verseIds[0];
       s.progress[id] = Math.min(STAGES, stageOf(id) + 1);
       memInit(id);
-      if (s.progress[id] === STAGES) { newlyMastered.push(id); memUpdate(id, 1); }
+      if (s.progress[id] === STAGES) { newlyMastered.push(id); memUpdate(id, 1); if (s.focus === id) s.focus = null; }
     } else {
       Object.entries(r.verseScores).forEach(([id, sc]) => memUpdate(id, sc.total ? sc.ok / sc.total : 1));
       if (r.kind === 'unit') s.unitsDone[r.unitId] = t;
@@ -273,7 +309,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    pathNodes, currentNode, unitUnlocked, growth, rootGrowth, treeStage,
+    pathNodes, currentNode, focusId, focusVerse, setFocus, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();

@@ -3,6 +3,7 @@ window.W = window.W || {};
 
 (() => {
   const I = {
+    search: '<circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="2.6" fill="none"/><path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>',
     flame: '<path d="M12 2.2c.6 3 2.4 4.6 4 6.4 1.7 1.9 3 3.9 3 6.6A7 7 0 0 1 5 15.2c0-2.3 1-4.1 2.4-5.5.2 1.6.9 2.8 2 3.4-.3-3.6.8-7.6 2.6-10.9z" fill="#2f7be6"/><path d="M12 11.5c1.9 1.7 3.2 3.3 3.2 5.1a3.2 3.2 0 0 1-6.4 0c0-1.9 1.3-3.4 3.2-5.1z" fill="#9fcbff"/>',
     flameOff: '<path d="M12 2.2c.6 3 2.4 4.6 4 6.4 1.7 1.9 3 3.9 3 6.6A7 7 0 0 1 5 15.2c0-2.3 1-4.1 2.4-5.5.2 1.6.9 2.8 2 3.4-.3-3.6.8-7.6 2.6-10.9z" fill="#b9c9dc"/><path d="M12 11.5c1.9 1.7 3.2 3.3 3.2 5.1a3.2 3.2 0 0 1-6.4 0c0-1.9 1.3-3.4 3.2-5.1z" fill="#e3ebf4"/>',
     cap: '<path d="M12 4 1.5 9 12 14l8-3.8V16h2V9z" fill="currentColor"/><path d="M5.5 12.2v3.6c0 1.6 2.9 3.2 6.5 3.2s6.5-1.6 6.5-3.2v-3.6L12 15.3z" fill="currentColor" opacity=".75"/>',

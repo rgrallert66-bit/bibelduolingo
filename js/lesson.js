@@ -226,6 +226,7 @@ W.end = (() => {
       <div class="end-hero">${W.mascot('cheer', 'jump')}</div>
       <h1 class="end-title">${title}</h1>
       <p class="end-sub">${sub}</p>
+      ${cfg.kind === 'learn' && r.newlyMastered.length && W.store.focusVerse() ? `<div class="next-verse">Als Nächstes: <b>${esc(W.store.focusVerse().ref)}</b><button class="change">Anderen wählen</button></div>` : ''}
       <div class="stat-row">
         <div class="stat-box xp"><div class="sb-label">EP gesamt</div><div class="sb-val">${W.icon('bolt')}<span data-c="${r.xp}">0</span></div></div>
         <div class="stat-box acc"><div class="sb-label">Genauigkeit</div><div class="sb-val">${W.icon('target')}<span data-c="${r.accuracy}" data-s="%">0</span></div></div>
@@ -235,6 +236,8 @@ W.end = (() => {
         : `<div class="goal-note muted">Tagesziel: ${W.store.xpToday()} / ${s.dailyGoal} EP</div>`}
     `, 'Weiter', next);
     screen.querySelectorAll('[data-c]').forEach(e => countUp(e, +e.dataset.c, 900, e.dataset.s || ''));
+    const nv = screen.querySelector('.next-verse .change');
+    if (nv) nv.addEventListener('click', () => { W.sound.play('tap'); W.ui.pickerModal(v => { screen.querySelector('.next-verse b').textContent = v.ref; }); });
     W.sound.play('complete');
     W.fx.confetti(screen);
     return cleanup;

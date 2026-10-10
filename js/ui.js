@@ -87,7 +87,7 @@ W.ui = (() => {
       const a = e.target.closest('[data-act]');
       if (!a) return false;
       W.sound.play('tap');
-      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow })[a.dataset.act]();
+      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow, pick: () => pickerModal() })[a.dataset.act]();
       return true;
     };
     $('#view').addEventListener('click', e => { if (!onAct(e)) closePop(); });
@@ -138,13 +138,13 @@ W.ui = (() => {
       const vod = verseOfDay();
       html += `<section class="side-tree">
           <button class="side-tree-art" data-act="tree" aria-label="Zum Baum"><canvas></canvas><span class="tree-label">${esc(stage.name)}</span></button>
-          <div class="side-vod"><div class="vod-label">Vers des Tages</div><p class="vod-text">${esc(vod.v.text)}</p><div class="vod-ref">${esc(vod.v.ref)}</div></div>
+          <div class="side-vod"><div class="vod-label">${vod.focus ? 'Dein Lernvers' : 'Vers des Tages'}<button class="change" data-act="pick">Ändern</button></div><p class="vod-text">${esc(vod.v.text)}</p><div class="vod-ref">${esc(vod.v.ref)}</div></div>
           <button class="btn cta small" data-act="practice"><span>${st.totalDays() === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
         </section>`;
     }
     html += goalHTML() + questsHTML();
     if (s.freezes < st.MAX_FREEZES) html += `<button class="card side-shop" data-act="gems">${W.icon('cloud')}<div><b>Regenwolke</b><span>Schützt deine Serie an einem verpassten Tag. ${st.FREEZE_PRICE} Perlen.</span></div>${W.icon('chevron')}</button>`;
-    html += `<p class="side-foot">Bibeltext: Lutherbibel 1912 · Tastatur: <kbd>1</kbd>–<kbd>4</kbd> wählen, <kbd>Enter</kbd> prüfen</p>`;
+    html += `<p class="side-foot">Bibeltext: Elberfelder 1905 · Tastatur: <kbd>1</kbd>–<kbd>4</kbd> wählen, <kbd>Enter</kbd> prüfen</p>`;
     side.innerHTML = html;
     const c = $('.side-tree canvas', side);
     if (c) mountTree(c);
@@ -198,7 +198,7 @@ W.ui = (() => {
     let html = header('Lernen', ['gems', 'streak']) + `
       <div class="seg-tabs" role="tablist">
         <button role="tab" class="${learnSub === 'path' ? 'on' : ''}" data-sub="path">Lernpfad</button>
-        <button role="tab" class="${learnSub === 'verses' ? 'on' : ''}" data-sub="verses">Meine Verse${due.length ? ` <i class="mini-badge">${due.length}</i>` : ''}</button>
+        <button role="tab" class="${learnSub === 'verses' ? 'on' : ''}" data-sub="verses">Alle Verse${due.length ? ` <i class="mini-badge">${due.length}</i>` : ''}</button>
       </div>`;
     if (learnSub === 'verses') {
       view.innerHTML = html + '<div class="verses-wrap"></div>';
@@ -213,7 +213,7 @@ W.ui = (() => {
     let k = 0;
     W.UNITS.forEach((u, ui) => {
       const un = nodes.filter(n => n.unit.id === u.id);
-      const unlocked = !un[0].locked;
+      const unlocked = true;
       const done = un.filter(n => n.done).length;
       html += `<div class="unit-banner ${unlocked ? '' : 'locked'}" style="--c:${u.color};--cd:${u.dark}">
           <div><div class="eyebrow">Einheit ${ui + 1} · ${done} / ${un.length}</div><h2>${esc(u.title)}</h2><p>${esc(u.subtitle)}</p></div>
@@ -221,31 +221,32 @@ W.ui = (() => {
       html += `<div class="unit-nodes" style="--c:${u.color};--cd:${u.dark}">`;
       un.forEach((n, i) => {
         const x = pattern[(i) % pattern.length] * 46;
-        const state = n.done ? 'done' : n.current ? 'current' : 'locked';
+        const state = n.done ? 'done' : n.current ? 'current' : n.locked ? 'locked' : n.kind === 'verse' ? 'open' : 'current';
         let icon = 'book', ring = '';
         if (n.kind === 'chest') icon = n.done ? 'chestOpen' : 'chest';
         if (n.kind === 'review') icon = 'trophy';
         if (n.kind === 'verse') {
-          icon = n.done ? 'check' : n.locked ? 'lock' : 'bookOpen';
+          icon = n.done ? 'check' : 'bookOpen';
           const p = st.stageOf(n.id) / st.STAGES;
-          if (n.current) ring = `<svg class="node-ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="nr-bg"/><circle cx="50" cy="50" r="46" class="nr-fg" style="stroke-dashoffset:${289 * (1 - p)}"/></svg>`;
+          if (!n.done && (n.current || p > 0)) ring = `<svg class="node-ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="nr-bg"/><circle cx="50" cy="50" r="46" class="nr-fg" style="stroke-dashoffset:${289 * (1 - p)}"/></svg>`;
         }
         if (n.kind === 'review' && n.locked) icon = 'trophy';
         html += `<div class="node-wrap" style="--x:${x}px" data-i="${k}">
             ${ring}
             <button class="node ${n.kind} ${state}" data-k="${k}" aria-label="${n.kind === 'verse' ? esc(n.verse.ref) : n.kind === 'chest' ? 'Truhe' : 'Einheiten-Wiederholung'}">${W.icon(icon)}</button>
-            ${n.current ? `<div class="start-bubble">${n.kind === 'chest' ? 'Öffnen' : st.stageOf(n.id) > 0 ? 'Weiter' : 'Start'}</div>` : ''}
+            ${n.current ? `<div class="start-bubble">${n.kind === 'chest' ? 'Öffnen' : n.kind === 'review' ? 'Start' : 'Dein Vers'}</div>` : ''}
           </div>`;
         if (i === 1 && ui % 2 === 0) html += `<div class="deco" style="--x:118px">${W.mascot(ui === 0 ? 'happy' : 'normal')}</div>`;
         k++;
       });
       html += '</div>';
     });
-    html += `<div class="path-end">${W.icon('crown')}<p>Am Ende des Weges: alle 45 Verse in deinem Herzen.</p></div></div>`;
+    html += `<div class="path-end">${W.icon('crown')}<p>Du entscheidest, welchen Vers du lernst. Tippe einfach auf einen Vers.</p><button class="btn primary add-own-path">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button></div></div>`;
     view.innerHTML = html;
     wireSub(view);
     const dc = $('.due-card', view);
     if (dc) dc.addEventListener('click', () => { W.sound.play('tap'); startReview(due); });
+    $('.add-own-path', view).addEventListener('click', () => { W.sound.play('tap'); addOwnModal(); });
 
     view.querySelectorAll('.node').forEach(b => b.addEventListener('click', e => {
       e.stopPropagation();
@@ -286,14 +287,14 @@ W.ui = (() => {
     let inner = '';
     if (n.kind === 'verse') {
       const stage = st.stageOf(n.id);
-      if (n.locked) inner = `<h4>${esc(n.verse.ref)}</h4><p>Schließe die vorherigen Lektionen ab, um diesen Vers freizuschalten.</p><button class="btn locked big" disabled>Gesperrt</button>`;
-      else if (n.done) inner = `<h4>${esc(n.verse.ref)}</h4><p class="scripture small">${esc(n.verse.text)}</p><button class="btn white big go">Üben +10 EP</button>`;
-      else inner = `<h4>${esc(n.verse.ref)}</h4><p>${['Neuer Vers: kennenlernen', 'Festigen', 'Meistern'][stage]} · Lektion ${stage + 1} von ${st.STAGES}</p><button class="btn white big go">${stage ? 'Weiter' : 'Start'} +10 EP</button>`;
+      const vt = `<p class="vtext">${esc(n.verse.text)}</p>`;
+      if (n.done) inner = `<h4>${esc(n.verse.ref)} · gemeistert</h4>${vt}<button class="btn white big go">Üben +10 EP</button>`;
+      else inner = `<h4>${esc(n.verse.ref)}</h4>${vt}<p class="pop-meta">${['Neuer Vers', 'Festigen', 'Meistern'][stage]} · Lektion ${stage + 1} von ${st.STAGES}</p><button class="btn white big go">${n.current ? (stage ? 'Weiterlernen' : 'Jetzt lernen') : 'Diesen Vers lernen'} +10 EP</button>`;
     } else if (n.kind === 'chest') {
-      inner = n.locked ? `<h4>Schatztruhe</h4><p>Erreiche diese Truhe, um sie zu öffnen.</p><button class="btn locked big" disabled>Gesperrt</button>`
+      inner = n.locked ? `<h4>Schatztruhe</h4><p>Meistere 3 Verse dieser Einheit, dann öffnet sie sich.</p><button class="btn locked big" disabled>Noch verschlossen</button>`
         : n.done ? `<h4>Schatztruhe</h4><p>Schon geöffnet.</p>` : `<h4>Schatztruhe</h4><p>Darin warten Perlen auf dich!</p><button class="btn white big go">Öffnen</button>`;
     } else {
-      inner = n.locked ? `<h4>Einheiten-Wiederholung</h4><p>Lerne zuerst alle Verse dieser Einheit.</p><button class="btn locked big" disabled>Gesperrt</button>`
+      inner = n.locked ? `<h4>Einheiten-Wiederholung</h4><p>Meistere alle fünf Verse dieser Einheit, in beliebiger Reihenfolge.</p><button class="btn locked big" disabled>Noch nicht bereit</button>`
         : `<h4>Einheiten-Wiederholung</h4><p>Alle fünf Verse von „${esc(n.unit.title)}“ gemischt.</p><button class="btn white big go">${n.done ? 'Wiederholen +15 EP' : 'Start +15 EP'}</button>`;
     }
     pop.innerHTML = inner;
@@ -319,7 +320,7 @@ W.ui = (() => {
       return;
     }
     if (n.done) startLesson({ kind: 'practice', verses: [n.verse] });
-    else startLesson({ kind: 'learn', verse: n.verse });
+    else { st.setFocus(n.id); startLesson({ kind: 'learn', verse: n.verse }); }
   }
 
   function startReview(list) {
@@ -344,63 +345,196 @@ W.ui = (() => {
     return `<span class="str" title="Gedächtnisstärke">${[0, 1, 2, 3].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
   }
 
+  // ---------- Alle Verse (Bibliothek) ----------
+  let libFilter = 'all', libQuery = '';
+  const FILTERS = [['all', 'Alle'], ['new', 'Neu'], ['started', 'Begonnen'], ['mastered', 'Gemeistert'], ['due', 'Fällig']];
+  const norm = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  function statusOf(v) {
+    const stage = st.stageOf(v.id);
+    if (st.isMastered(v.id)) return 'mastered';
+    return stage > 0 ? 'started' : 'new';
+  }
+
+  function verseRows(list, opts = {}) {
+    const due = st.dueVerses(), fid = st.focusId();
+    return list.map(v => {
+      const u = st.unitOf(v), status = statusOf(v);
+      const badge = v.id === fid ? '<span class="focus-pill">Dein Lernvers</span>'
+        : due.includes(v) ? '<span class="due-pill">fällig</span>'
+        : status === 'new' ? '<span class="new-pill">Neu</span>' : '';
+      return `<button class="verse-row ${status}" data-id="${v.id}" style="--c:${u.color}">
+          <div class="vr-main"><b>${esc(v.ref)}</b><span>${esc(v.text)}</span></div>
+          <div class="vr-side">${badge}
+            ${status === 'new' ? '' : `<span class="stars" aria-label="${st.stageOf(v.id)} von 3 Lektionen">${[1, 2, 3].map(i => `<i class="${st.stageOf(v.id) >= i ? 'on' : ''}">${W.icon('star')}</i>`).join('')}</span>`}
+            ${opts.pick ? '' : status === 'new' ? '' : bars(v.id)}</div>
+        </button>`;
+    }).join('');
+  }
+
+  // Gruppiert nach Thema, gefiltert und durchsucht
+  function libraryHTML(filter, query, opts = {}) {
+    const due = st.dueVerses(), q = norm(query.trim());
+    const groups = W.UNITS.concat(W.OWN_UNIT.verses.length ? [W.OWN_UNIT] : []);
+    let html = '', count = 0;
+    groups.forEach((u, ui) => {
+      const vs = u.verses.filter(v => {
+        if (filter === 'due' && !due.includes(v)) return false;
+        if (filter !== 'all' && filter !== 'due' && statusOf(v) !== filter) return false;
+        return !q || norm(v.ref + ' ' + v.text).includes(q);
+      });
+      if (!vs.length) return;
+      count += vs.length;
+      html += `<h3 class="unit-h" style="--c:${u.color}">${u.id === 'own' ? 'Eigene Verse' : `${esc(u.title)}`}</h3><div class="verse-list">${verseRows(vs, opts)}</div>`;
+    });
+    return count ? html : `<div class="empty small"><p>Kein Vers gefunden. Du kannst ihn als eigenen Vers hinzufügen.</p></div>`;
+  }
+
   function renderVerses(view) {
     const started = st.startedVerses(), due = st.dueVerses();
-    let html = `<p class="muted sub-note">${started.length} von ${W.VERSE_LIST.length} Versen begonnen · ${st.masteredCount()} gemeistert</p>`;
-    if (started.length) html += `<button class="btn primary big wide practice-all">${W.icon('repeat')} ${due.length ? `${due.length} fällige ${due.length === 1 ? 'Vers' : 'Verse'} wiederholen` : 'Gelernte Verse üben'}</button>`;
-    else html += `<div class="empty">${W.mascot('normal')}<p>Hier sammeln sich deine Verse. Starte deine erste Lektion im Lernpfad!</p><button class="btn primary big go-learn">Zum Lernpfad</button></div>`;
-    W.UNITS.forEach((u, ui) => {
-      const vs = u.verses.filter(v => st.stageOf(v.id) > 0);
-      if (!vs.length) return;
-      html += `<h3 class="unit-h" style="--c:${u.color}">Einheit ${ui + 1} · ${esc(u.title)}</h3><div class="verse-list">`;
-      vs.forEach(v => {
-        const isDue = due.includes(v);
-        html += `<button class="verse-row" data-id="${v.id}" style="--c:${u.color}">
-          <div class="vr-main"><b>${esc(v.ref)}</b><span class="scripture small">${esc(v.text)}</span></div>
-          <div class="vr-side">${isDue ? '<span class="due-pill">fällig</span>' : ''}${bars(v.id)}
-            <span class="stars">${[1, 2, 3].map(i => `<i class="${st.stageOf(v.id) >= i ? 'on' : ''}">${W.icon('star')}</i>`).join('')}</span></div>
-        </button>`;
-      });
-      html += '</div>';
-    });
+    const total = st.allVerses().length;
+    let html = `<p class="muted sub-note">Wähle selbst, welchen Vers du lernen willst. ${started.length} von ${total} begonnen · ${st.masteredCount()} gemeistert</p>
+      <div class="lib-tools">
+        <label class="search">${W.icon('search')}<input id="lib-q" type="search" placeholder="Vers oder Bibelstelle suchen" value="${esc(libQuery)}" autocomplete="off"></label>
+        <div class="chips" role="tablist">${FILTERS.map(([k, l]) => `<button class="chip-f ${libFilter === k ? 'on' : ''}" data-f="${k}">${l}${k === 'due' && due.length ? ` ${due.length}` : ''}</button>`).join('')}</div>
+      </div>
+      <div class="lib-actions">
+        ${started.length ? `<button class="btn primary practice-all">${W.icon('repeat')} ${due.length ? `${due.length} fällige wiederholen` : 'Gelernte üben'}</button>` : ''}
+        <button class="btn soft add-own">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button>
+      </div>
+      <div class="lib-list">${libraryHTML(libFilter, libQuery)}</div>`;
     view.innerHTML = html;
+    const list = $('.lib-list', view);
+    const wireRows = () => list.querySelectorAll('.verse-row').forEach(b => b.addEventListener('click', () => { W.sound.play('tap'); verseModal(W.VERSES[b.dataset.id]); }));
+    wireRows();
+    $('#lib-q', view).addEventListener('input', e => { libQuery = e.target.value; list.innerHTML = libraryHTML(libFilter, libQuery); wireRows(); });
+    view.querySelectorAll('.chip-f').forEach(b => b.addEventListener('click', () => {
+      W.sound.play('tap'); libFilter = b.dataset.f;
+      view.querySelectorAll('.chip-f').forEach(x => x.classList.toggle('on', x === b));
+      list.innerHTML = libraryHTML(libFilter, libQuery); wireRows();
+    }));
     const pa = $('.practice-all', view);
     if (pa) pa.addEventListener('click', () => { W.sound.play('tap'); startReview(due); });
-    const gl = $('.go-learn', view);
-    if (gl) gl.addEventListener('click', () => { W.sound.play('tap'); learnSub = 'path'; show('learn', { scrollToCurrent: true }); });
-    view.querySelectorAll('.verse-row').forEach(b => b.addEventListener('click', () => { W.sound.play('tap'); verseModal(W.VERSES[b.dataset.id]); }));
+    $('.add-own', view).addEventListener('click', () => { W.sound.play('tap'); addOwnModal(); });
+  }
+
+  function chooseVerse(v, start) {
+    st.setFocus(v.id);
+    if (start) startLesson({ kind: 'learn', verse: v });
+    else { W.sound.play('pop'); toast(`${W.icon('bookOpen')}<div><small>Dein neuer Lernvers</small><b>${esc(v.ref)}</b></div>`); refresh(); }
   }
 
   function verseModal(v) {
+    const mastered = st.isMastered(v.id), stage = st.stageOf(v.id), isFocus = st.focusId() === v.id;
     const m = modal(`
       <div class="vm-top"><span class="ref-chip">${esc(v.ref)}</span>${W.sound.canSpeak() ? `<button class="icon-btn speak" aria-label="Vorlesen">${W.icon('speaker')}</button>` : ''}</div>
       <p class="scripture big">${esc(v.text)}</p>
-      <div class="vm-meta"><span>Gedächtnis ${bars(v.id)}</span><span>${st.isMastered(v.id) ? 'Gemeistert' : `Lektion ${st.stageOf(v.id)} von ${st.STAGES}`}</span></div>
-      <div class="modal-actions"><button class="btn primary big practice">Diesen Vers üben</button><button class="btn ghost" data-close>Schließen</button></div>`);
+      <div class="vm-meta"><span>${stage ? `Gedächtnis ${bars(v.id)}` : 'Noch nicht gelernt'}</span><span>${mastered ? 'Gemeistert' : stage ? `Lektion ${stage} von ${st.STAGES}` : ''}</span></div>
+      <div class="modal-actions col">
+        ${mastered ? '<button class="btn primary big practice">Diesen Vers üben</button>'
+          : `<button class="btn primary big learn">${stage ? 'Weiterlernen' : 'Diesen Vers lernen'}</button>
+             ${isFocus ? '' : '<button class="btn soft big focus">Als meinen Lernvers merken</button>'}
+             ${stage ? '<button class="btn ghost practice">Nur wiederholen</button>' : ''}`}
+        ${v.own ? '<button class="btn ghost danger remove">Eigenen Vers löschen</button>' : ''}
+        <button class="btn ghost" data-close>Schließen</button>
+      </div>`);
+    const on = (sel, fn) => { const b = $(sel, m.el); if (b) b.addEventListener('click', () => { W.sound.play('tap'); m.close(); fn(); }); };
     const sp = $('.speak', m.el);
     if (sp) sp.addEventListener('click', () => W.sound.speak(v.text));
-    $('.practice', m.el).addEventListener('click', () => {
-      W.sound.play('tap'); m.close();
-      if (st.isMastered(v.id)) startLesson({ kind: 'practice', verses: [v] });
-      else startLesson({ kind: 'review', verses: [v] });
+    on('.learn', () => chooseVerse(v, true));
+    on('.focus', () => chooseVerse(v, false));
+    on('.practice', () => startLesson({ kind: mastered ? 'practice' : 'review', verses: [v] }));
+    on('.remove', () => confirm({ mood: 'sad', title: 'Vers löschen?', text: `„${esc(v.ref)}“ und dein Fortschritt dazu werden entfernt.`, yes: 'Behalten', no: 'Löschen', onNo: () => { st.removeCustom(v.id); refresh(); } }));
+  }
+
+  // Schnellauswahl: Lernvers wechseln
+  function pickerModal(onPicked) {
+    let q = '', f = 'all';
+    const m = modal(`
+      <h2>Welchen Vers willst du lernen?</h2>
+      <label class="search">${W.icon('search')}<input id="pick-q" type="search" placeholder="Vers oder Bibelstelle suchen" autocomplete="off"></label>
+      <div class="chips">${FILTERS.slice(0, 4).map(([k, l]) => `<button class="chip-f ${f === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('')}</div>
+      <div class="pick-list"></div>
+      <div class="modal-actions"><button class="btn soft add-own">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button><button class="btn ghost" data-close>Schließen</button></div>`, { cls: 'picker' });
+    const list = $('.pick-list', m.el);
+    const draw = () => {
+      list.innerHTML = libraryHTML(f, q, { pick: true });
+      list.querySelectorAll('.verse-row').forEach(b => b.addEventListener('click', () => {
+        const v = W.VERSES[b.dataset.id];
+        m.close();
+        if (st.isMastered(v.id)) { verseModal(v); return; }
+        st.setFocus(v.id); W.sound.play('pop');
+        toast(`${W.icon('bookOpen')}<div><small>Dein neuer Lernvers</small><b>${esc(v.ref)}</b></div>`);
+        onPicked ? onPicked(v) : refresh();
+      }));
+    };
+    draw();
+    $('#pick-q', m.el).addEventListener('input', e => { q = e.target.value; draw(); });
+    m.el.querySelectorAll('.chip-f').forEach(b => b.addEventListener('click', () => {
+      W.sound.play('tap'); f = b.dataset.f;
+      m.el.querySelectorAll('.chip-f').forEach(x => x.classList.toggle('on', x === b)); draw();
+    }));
+    $('.add-own', m.el).addEventListener('click', () => { m.close(); addOwnModal(onPicked); });
+  }
+
+  // Eigenen Vers hinzufügen (beliebige Übersetzung)
+  function addOwnModal(onAdded) {
+    const m = modal(`
+      <h2>Eigenen Vers hinzufügen</h2>
+      <p>Jeder Vers, der dir wichtig ist, in der Übersetzung deiner Wahl. Er wird mit allen Aufgabentypen geübt.</p>
+      <form class="own-form" novalidate>
+        <label for="own-ref">Bibelstelle</label>
+        <input id="own-ref" class="text-in" maxlength="40" placeholder="z. B. Römer 12,12" autocomplete="off">
+        <label for="own-text">Verstext</label>
+        <textarea id="own-text" class="text-in" rows="5" maxlength="700" placeholder="Den Vers hier eintippen oder einfügen"></textarea>
+        <p class="form-err" hidden></p>
+        <div class="modal-actions col">
+          <button type="submit" class="btn primary big">Hinzufügen und lernen</button>
+          <button type="button" class="btn soft only-save">Nur speichern</button>
+          <button type="button" class="btn ghost" data-close>Abbrechen</button>
+        </div>
+      </form>`, { sticky: true });
+    const err = $('.form-err', m.el);
+    const read = () => {
+      const ref = $('#own-ref', m.el).value.trim(), text = $('#own-text', m.el).value.trim();
+      const words = text.split(/\s+/).filter(Boolean).length;
+      let msg = '';
+      if (!ref) msg = 'Bitte gib die Bibelstelle an, zum Beispiel „Römer 12,12“.';
+      else if (words < 4) msg = 'Der Vers braucht mindestens 4 Wörter.';
+      else if (words > 90) msg = 'Der Vers ist zu lang. Teile ihn in kürzere Abschnitte (höchstens 90 Wörter).';
+      err.hidden = !msg; err.textContent = msg;
+      if (msg) { W.sound.play('miss'); return null; }
+      return st.addCustom(ref, text);
+    };
+    $('.own-form', m.el).addEventListener('submit', e => {
+      e.preventDefault();
+      const v = read(); if (!v) return;
+      m.close(); st.setFocus(v.id);
+      if (onAdded) onAdded(v); else startLesson({ kind: 'learn', verse: v });
     });
+    $('.only-save', m.el).addEventListener('click', () => {
+      const v = read(); if (!v) return;
+      m.close(); W.sound.play('pop');
+      toast(`${W.icon('bookOpen')}<div><small>Gespeichert</small><b>${esc(v.ref)}</b></div>`);
+      if (onAdded) onAdded(v); else { libFilter = 'all'; refresh(); }
+    });
+    setTimeout(() => $('#own-ref', m.el).focus(), 80);
   }
 
   // ---------- Baum (Startseite) ----------
   function verseOfDay() {
-    const n = st.currentNode();
-    if (n && n.kind === 'verse') return { v: n.verse, n };
+    const v = st.focusVerse();
+    if (v) return { v, focus: true };
     const due = st.dueVerses();
-    if (due.length) return { v: due[0], n: null };
+    if (due.length) return { v: due[0], focus: false };
     const pool = st.startedVerses().length ? st.startedVerses() : W.VERSE_LIST;
-    return { v: pool[st.daysBetween('2024-01-01', st.today()) % pool.length], n: null };
+    return { v: pool[st.daysBetween('2024-01-01', st.today()) % pool.length], focus: false };
   }
 
+  // „Jetzt üben“: dein gewählter Vers; wenn alles gemeistert ist, Wiederholung
   function practiceNow() {
-    const n = st.currentNode();
-    if (n && !st.learnedToday()) return startNode(n);
-    if (st.dueVerses().length) return startReview(st.dueVerses());
-    if (n) return startNode(n);
+    const v = st.focusVerse();
+    if (v) return startLesson({ kind: 'learn', verse: v });
     startReview();
   }
 
@@ -418,7 +552,7 @@ W.ui = (() => {
       <section class="card vod" title="Ganzen Vers anzeigen">
         <div class="vod-ic">${W.icon('bookOpen')}</div>
         <div class="vod-body">
-          <div class="vod-label">Vers des Tages</div>
+          <div class="vod-label">${vod.focus ? 'Dein Lernvers' : 'Vers des Tages'}<button class="change" data-act="pick">Ändern</button></div>
           <p class="vod-text">${esc(vod.v.text)}</p>
           <div class="vod-ref">${esc(vod.v.ref)}</div>
         </div>
@@ -439,10 +573,10 @@ W.ui = (() => {
         <div><span class="te-ic">${W.icon('flame')}</span><p><b>Die Wurzeln</b> reichen tiefer, je länger deine Serie ist. Ganz unten wartet die Quelle.</p></div>
         <div><span class="te-ic">${W.icon('fruit')}</span><p><b>Jede Frucht</b> ist ein Vers, den du gemeistert hast.</p></div>
       </div>
-      <blockquote class="motto"><p>„Der ist wie ein Baum, gepflanzt an den Wasserbächen, der seine Frucht bringt zu seiner Zeit, und seine Blätter verwelken nicht.“</p><cite>Psalm 1,3</cite></blockquote>`;
+      <blockquote class="motto"><p>„Und er ist wie ein Baum, gepflanzt an Wasserbächen, der seine Frucht bringt zu seiner Zeit, und dessen Blatt nicht verwelkt.“</p><cite>Psalm 1,3</cite></blockquote>`;
     mountTree($('.tree-card canvas', view));
     $('.practice-now', view).addEventListener('click', () => { W.sound.play('tap'); practiceNow(); });
-    $('.vod', view).addEventListener('click', e => { e.currentTarget.classList.toggle('open'); });
+    $('.vod', view).addEventListener('click', e => { if (!e.target.closest('.change')) e.currentTarget.classList.toggle('open'); });
   }
 
   // ---------- Profil ----------
@@ -490,7 +624,7 @@ W.ui = (() => {
         <label class="set-row col" for="set-name"><span>Name</span><input id="set-name" class="text-in" maxlength="24" value="${esc(s.name)}" placeholder="Dein Name"></label>
         <button class="set-row danger reset">Fortschritt zurücksetzen</button>
       </div>
-      <p class="fine">Bibeltext: Lutherbibel 1912 (gemeinfrei), Rechtschreibung angepasst. Dein Fortschritt wird nur auf diesem Gerät gespeichert.</p>`;
+      <p class="fine">Bibeltext: Elberfelder Bibel 1905 (gemeinfrei); „Jehova“ als „HERR“ wiedergegeben, Rechtschreibung angepasst. Dein Fortschritt wird nur auf diesem Gerät gespeichert.</p>`;
     $('.buy', view).addEventListener('click', buyFreeze);
     $('#set-sound', view).addEventListener('change', e => { st.set({ sound: e.target.checked }); W.sound.play('pop'); });
     $('#set-tts', view).addEventListener('change', e => { st.set({ tts: e.target.checked }); W.sound.play('tap'); });
@@ -600,20 +734,39 @@ W.ui = (() => {
         goal = +b.dataset.g; W.sound.play('pop');
         el.querySelectorAll('.goal-opt').forEach(x => x.classList.toggle('on', x === b));
       }));
+      $('.end-foot .btn', el).addEventListener('click', () => { W.sound.play('tap'); stepVerse(); });
+    };
+    // Freie Wahl des ersten Verses
+    let first = W.VERSES['ps23-1'];
+    const SUGGEST = ['ps23-1', 'joh3-16', 'phil4-13', 'jes41-10', 'jer29-11', 'mt11-28'];
+    const stepVerse = () => {
+      el.innerHTML = `<div class="ob-wrap">
+          <div class="ob-row">${W.mascot('happy')}<div class="bubble">Mit welchem Vers möchtest du beginnen? Du kannst jederzeit wechseln.</div></div>
+          <div class="verse-opts">${SUGGEST.map(id => { const v = W.VERSES[id]; return `<button class="verse-opt ${v === first ? 'on' : ''}" data-id="${id}"><b>${esc(v.ref)}</b><span>${esc(v.text)}</span></button>`; }).join('')}</div>
+          <div class="ob-more"><button class="btn soft more-verses">Alle 45 Verse ansehen</button><button class="btn soft own-verse">Eigenen Vers eingeben</button></div>
+        </div>
+        <footer class="end-foot"><button class="btn primary big">Weiter</button></footer>`;
+      el.querySelectorAll('.verse-opt').forEach(b => b.addEventListener('click', () => {
+        first = W.VERSES[b.dataset.id]; W.sound.play('pop');
+        el.querySelectorAll('.verse-opt').forEach(x => x.classList.toggle('on', x === b));
+      }));
+      const chosen = v => { first = v; step4(); };
+      $('.more-verses', el).addEventListener('click', () => { W.sound.play('tap'); pickerModal(chosen); });
+      $('.own-verse', el).addEventListener('click', () => { W.sound.play('tap'); addOwnModal(chosen); });
       $('.end-foot .btn', el).addEventListener('click', () => { W.sound.play('tap'); step4(); });
     };
     const step4 = () => {
       el.innerHTML = `<div class="ob-wrap">
           <div class="ob-row">${W.mascot('cheer')}<div class="bubble">Jetzt pflanzen wir deinen Samen. Tippe auf das Samenkorn!</div></div>
           <button class="seed-btn" aria-label="Samen pflanzen"><canvas class="ob-tree small"></canvas></button>
-          <p class="ob-sub small">Deine erste Lektion: <b>1. Mose 1,1</b></p>
+          <p class="ob-sub small">Dein erster Vers: <b>${esc(first.ref)}</b></p>
         </div>`;
       const ctl = W.tree.mount($('.ob-tree', el), { g: 0.4, rg: 0.3 });
       $('.seed-btn', el).addEventListener('click', () => {
         W.sound.play('seed');
         ctl.animateGrowth(0.4, 0.85, 0.3, 0.6, 1200).then(() => {
           ctl.destroy();
-          st.set({ onboarded: true, name, dailyGoal: goal, created: st.today() });
+          st.set({ onboarded: true, name, dailyGoal: goal, created: st.today(), focus: first.id });
           el.classList.add('leaving');
           setTimeout(() => { el.remove(); done(); }, 250);
         });
@@ -622,5 +775,5 @@ W.ui = (() => {
     step1();
   }
 
-  return { shell, show, refresh, topbar, modal, confirm, toast, achievementToast, onboarding, startLesson, startNode, get tab() { return tab; } };
+  return { shell, show, refresh, topbar, modal, confirm, toast, achievementToast, onboarding, startLesson, startNode, pickerModal, practiceNow, get tab() { return tab; } };
 })();
