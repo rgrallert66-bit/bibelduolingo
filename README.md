@@ -17,6 +17,8 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 - **Wiederholung:** Gelernte Verse werden nach einem Zeitplan (1, 2, 4, 7, 14, 30 Tage) wieder fällig, damit sie dauerhaft sitzen.
 - **Töne** werden direkt im Browser erzeugt (Web Audio). Neue Verse können vorgelesen werden (Sprachausgabe des Geräts).
 
+Die App passt sich an: Auf dem Handy gibt es unten eine Tab-Leiste, auf dem PC links eine Seitenleiste und rechts eine Spalte mit Serie, Tagesziel und Tagesaufgaben. Lektionen lassen sich am PC komplett mit der Tastatur bedienen (1–4 wählen, Enter prüfen, Buchstaben tippen).
+
 Der Fortschritt wird nur lokal im Browser gespeichert (`localStorage`).
 
 ## Starten
@@ -45,7 +47,7 @@ node tools/build-single.mjs dist/glaubensbaum.html
 | `js/tree.js` | Der Baum, gezeichnet auf `<canvas>` |
 | `js/exercises.js` | Aufgabentypen und Zusammenstellung der Lektionen |
 | `js/lesson.js` | Lektionsablauf und Abschluss-Bildschirme |
-| `js/ui.js` | Bildschirme: Baum, Lernen, Profil, Dialoge |
+| `js/ui.js` | Bildschirme: Baum, Lernen, Profil, Dialoge; auf dem PC mit Seitenleiste und rechter Spalte |
 | `js/sound.js` | Töne und Vorlesen |
 
 Bibeltext: Lutherbibel 1912 (gemeinfrei), Rechtschreibung behutsam angepasst.

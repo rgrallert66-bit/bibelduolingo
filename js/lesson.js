@@ -33,6 +33,7 @@ W.lesson = (() => {
         </div>
         <div class="foot-row">
           <button class="btn ghost skip">Überspringen</button>
+          <span class="kbd-hint"><kbd>Enter</kbd> zum Bestätigen</span>
           <button class="btn primary big main" disabled>Überprüfen</button>
         </div>
       </footer>`;

@@ -76,31 +76,83 @@ W.ui = (() => {
     const app = document.getElementById('app');
     app.innerHTML = `
       <main id="view" class="view"></main>
+      <aside id="side" class="side" aria-label="Dein Tag"></aside>
       <nav class="tabbar">
+        <div class="brand">${W.icon('tree')}<span>Glaubensbaum</span></div>
         ${[['learn', 'cap', 'Lernen'], ['tree', 'tree', 'Baum'], ['profile', 'user', 'Profil']]
           .map(([id, ic, label]) => `<button class="tab" data-tab="${id}">${W.icon(ic)}<span>${label}</span><i class="tab-badge" hidden></i></button>`).join('')}
       </nav>`;
     app.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { W.sound.play('tap'); show(b.dataset.tab); }));
-    $('#view').addEventListener('click', e => {
+    const onAct = e => {
       const a = e.target.closest('[data-act]');
-      if (a) {
-        W.sound.play('tap');
-        ({ streak: streakModal, gems: shopModal, goal: goalModal })[a.dataset.act]();
-        return;
-      }
-      closePop();
-    });
+      if (!a) return false;
+      W.sound.play('tap');
+      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow })[a.dataset.act]();
+      return true;
+    };
+    $('#view').addEventListener('click', e => { if (!onAct(e)) closePop(); });
+    $('#side').addEventListener('click', e => { onAct(e); });
+    // Wechsel zwischen Handy- und PC-Ansicht
+    if (window.matchMedia) DESKTOP.addEventListener('change', () => { if (!document.querySelector('.screen')) refresh(); });
   }
 
-  // Kopfzeile eines Bildschirms mit Titel und Statuspillen
-  function header(title, which = ['streak']) {
+  const DESKTOP = window.matchMedia ? matchMedia('(min-width: 1100px)') : { matches: false, addEventListener() {} };
+
+  function pillsHTML(which) {
     const s = S();
     const pills = {
       streak: `<button class="pill" data-act="streak" aria-label="Serie: ${s.streak} Tage">${W.icon(st.learnedToday() ? 'flame' : 'flameOff')}<b>${s.streak} ${s.streak === 1 ? 'Tag' : 'Tage'}</b></button>`,
       gems: `<button class="pill" data-act="gems" aria-label="Perlen: ${s.gems}">${W.icon('gem')}<b>${s.gems}</b></button>`,
       goal: `<button class="pill" data-act="goal" aria-label="Tagesziel">${W.icon('bolt')}<b>${st.xpToday()}/${s.dailyGoal}</b></button>`
     };
-    return `<header class="page-header"><h1>${title}</h1><div class="pills">${which.map(k => pills[k]).join('')}</div></header>`;
+    return which.map(k => pills[k]).join('');
+  }
+
+  function goalHTML(cls = '') {
+    const s = S(), goalP = Math.min(100, st.xpToday() / s.dailyGoal * 100);
+    return `<section class="card goal-card ${cls}">
+        <div class="gc-top"><b>Tagesziel</b><span>${st.xpToday()} / ${s.dailyGoal} EP</span></div>
+        <div class="goal-bar"><div style="width:${goalP}%"></div></div>
+      </section>`;
+  }
+
+  function questsHTML(cls = '') {
+    const qs = st.quests();
+    return `<section class="card quests ${cls}">
+        <div class="sec-head"><h3>Tagesaufgaben</h3><span class="muted">${qs.filter(q => q.done).length} / ${qs.length}</span></div>
+        ${qs.map(q => `<div class="quest ${q.done ? 'done' : ''}">
+          <div class="q-icon">${W.icon(q.done ? 'chestOpen' : 'chest')}</div>
+          <div class="q-body"><div class="q-label">${esc(q.label)}</div>
+            <div class="q-bar"><div style="width:${Math.min(100, q.have / q.goal * 100)}%"></div><span>${q.have} / ${q.goal}</span></div></div>
+          <div class="q-gems">+${q.gems}${W.icon('gem')}</div></div>`).join('')}
+      </section>`;
+  }
+
+  // Rechte Spalte (nur PC): Status, kleiner Baum, Tagesziel, Aufgaben
+  function renderSide() {
+    const side = $('#side');
+    if (!DESKTOP.matches) { side.innerHTML = ''; return; }
+    const s = S(), stage = st.treeStage();
+    let html = `<div class="side-pills">${pillsHTML(['streak', 'gems', 'goal'])}</div>`;
+    if (tab !== 'tree') {
+      const vod = verseOfDay();
+      html += `<section class="side-tree">
+          <button class="side-tree-art" data-act="tree" aria-label="Zum Baum"><canvas></canvas><span class="tree-label">${esc(stage.name)}</span></button>
+          <div class="side-vod"><div class="vod-label">Vers des Tages</div><p class="vod-text">${esc(vod.v.text)}</p><div class="vod-ref">${esc(vod.v.ref)}</div></div>
+          <button class="btn cta small" data-act="practice"><span>${st.totalDays() === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
+        </section>`;
+    }
+    html += goalHTML() + questsHTML();
+    if (s.freezes < st.MAX_FREEZES) html += `<button class="card side-shop" data-act="gems">${W.icon('cloud')}<div><b>Regenwolke</b><span>Schützt deine Serie an einem verpassten Tag. ${st.FREEZE_PRICE} Perlen.</span></div>${W.icon('chevron')}</button>`;
+    html += `<p class="side-foot">Bibeltext: Lutherbibel 1912 · Tastatur: <kbd>1</kbd>–<kbd>4</kbd> wählen, <kbd>Enter</kbd> prüfen</p>`;
+    side.innerHTML = html;
+    const c = $('.side-tree canvas', side);
+    if (c) mountTree(c);
+  }
+
+  // Kopfzeile eines Bildschirms mit Titel und Statuspillen
+  function header(title, which = ['streak']) {
+    return `<header class="page-header"><h1>${title}</h1><div class="pills">${pillsHTML(which)}</div></header>`;
   }
 
   function topbar() {
@@ -117,6 +169,7 @@ W.ui = (() => {
     const view = $('#view');
     view.className = 'view v-' + name;
     ({ learn: renderLearn, tree: renderTree, profile: renderProfile })[name](view, opts);
+    renderSide();
     topbar();
     if (!opts.keepScroll && !(name === 'learn' && learnSub === 'path')) window.scrollTo(0, 0);
   }
@@ -352,11 +405,10 @@ W.ui = (() => {
   }
 
   function renderTree(view) {
-    const s = S(), stage = st.treeStage(), days = st.totalDays(), qs = st.quests();
+    const stage = st.treeStage(), days = st.totalDays();
     const depth = (st.rootGrowth() * 0.42).toFixed(1).replace('.', ',');
     const thirsty = !st.learnedToday() && days > 0;
     const vod = verseOfDay();
-    const goalP = Math.min(100, st.xpToday() / s.dailyGoal * 100);
     view.innerHTML = header('<span class="l1">Dein</span><br>Glaubensbaum') + `
       <section class="tree-card">
         <canvas aria-label="Dein Baum: ${esc(stage.name)}"></canvas>
@@ -373,18 +425,8 @@ W.ui = (() => {
       </section>
       <button class="btn cta practice-now"><span>${days === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
       <p class="hero-msg">${heroMessage()}</p>
-      <section class="card goal-card">
-        <div class="gc-top"><b>Tagesziel</b><span>${st.xpToday()} / ${s.dailyGoal} EP</span></div>
-        <div class="goal-bar"><div style="width:${goalP}%"></div></div>
-      </section>
-      <section class="card quests">
-        <div class="sec-head"><h3>Tagesaufgaben</h3><span class="muted">${qs.filter(q => q.done).length} / ${qs.length}</span></div>
-        ${qs.map(q => `<div class="quest ${q.done ? 'done' : ''}">
-          <div class="q-icon">${W.icon(q.done ? 'chestOpen' : 'chest')}</div>
-          <div class="q-body"><div class="q-label">${esc(q.label)}</div>
-            <div class="q-bar"><div style="width:${Math.min(100, q.have / q.goal * 100)}%"></div><span>${q.have} / ${q.goal}</span></div></div>
-          <div class="q-gems">+${q.gems}${W.icon('gem')}</div></div>`).join('')}
-      </section>
+      ${goalHTML('m-only')}
+      ${questsHTML('m-only')}
       <div class="tree-stats">
         <div><b>${days}</b><span>Lerntage</span></div>
         <div><b>${depth} m</b><span>Wurzeltiefe</span></div>
