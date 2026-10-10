@@ -5,11 +5,11 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 
 ## So funktioniert’s
 
-- **Freie Verswahl:** Du entscheidest, welchen Vers du lernst. Alle 45 Verse in 9 Themen (Vertrauen, Mut, Liebe, Licht, Tief verwurzelt …)
-  sind von Anfang an offen. Deinen „Lernvers“ wechselst du jederzeit über „Ändern“, im Lernpfad oder unter „Alle Verse“ (mit Suche und Filtern).
-  Eigene Verse in beliebiger Übersetzung lassen sich hinzufügen und werden genauso geübt.
-- **Lektionen:** Jeder Vers hat 3 Lektionen: kennenlernen, festigen, meistern. Schatztruhen öffnen sich ab 3 gemeisterten Versen eines Themas,
-  die Themen-Wiederholung, sobald alle 5 sitzen.
+- **Level für Level:** Der Lernpfad beginnt bei Level 1 und geht immer weiter. Für jedes Level wählst du selbst den Vers:
+  aus Vorschlägen (die bekanntesten und schönsten Verse zuerst), über die Suche (Wort oder Bibelstelle) oder nach Themen.
+  Eigene Verse in beliebiger Übersetzung lassen sich ebenfalls wählen. Ein Level ist geschafft, wenn sein Vers sitzt (3 Lektionen: kennenlernen, festigen, meistern);
+  danach öffnet sich das nächste Level. Je 5 Level bilden einen Abschnitt mit Schatztruhe (nach 3 Leveln) und gemischter Wiederholung (nach 5 Leveln).
+- **114 Verse** in 9 Themen (Grundlagen, Vertrauen, Mut, Liebe, Licht & Segen, Tief verwurzelt, Freude, Hoffnung, Gnade), darunter Vaterunser und Aaronitischer Segen.
 - **Aufgaben:** fehlendes Wort wählen, Lücken füllen, Vers aus Wortkacheln zusammensetzen, falsches Wort finden,
   Bibelstelle zuordnen und den Vers aus dem Gedächtnis schreiben (nur den ersten Buchstaben jedes Wortes tippen).
 - **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag.

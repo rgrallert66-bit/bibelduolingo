@@ -252,7 +252,9 @@ W.end = (() => {
     let sub = '';
     if (cfg.kind === 'learn') {
       const st = W.store.stageOf(cfg.verse.id);
-      sub = st >= W.store.STAGES ? `<b>${esc(cfg.verse.ref)}</b> sitzt! Vers gemeistert.` : `${esc(cfg.verse.ref)} · Lektion ${st} von ${W.store.STAGES}`;
+      const L = W.store.levelOfVerse(cfg.verse.id) + 1;
+      if (r.levelUp) title = `Level ${r.levelUp} geschafft!`;
+      sub = st >= W.store.STAGES ? `<b>${esc(cfg.verse.ref)}</b> sitzt! Vers gemeistert.` : `${L ? `Level ${L} · ` : ''}${esc(cfg.verse.ref)} · Lektion ${st} von ${W.store.STAGES}`;
     } else if (cfg.kind === 'unit') { title = 'Einheit abgeschlossen!'; sub = 'Alle fünf Verse wiederholt.'; }
     else if (cfg.kind === 'loop') { title = 'Gut wiederholt!'; sub = `${r.answered} Aufgaben in der Dauerschleife, davon ${r.correct} richtig. Jede Wiederholung festigt die Verse.`; }
     else sub = `${cfg.verses.length === 1 ? '1 Vers' : cfg.verses.length + ' Verse'} wiederholt. Dein Gedächtnis wird stärker.`;
@@ -261,7 +263,7 @@ W.end = (() => {
       <div class="end-hero">${W.mascot('cheer', 'jump')}</div>
       <h1 class="end-title">${title}</h1>
       <p class="end-sub">${sub}</p>
-      ${cfg.kind === 'learn' && r.newlyMastered.length && W.store.focusVerse() ? `<div class="next-verse">Als Nächstes: <b>${esc(W.store.focusVerse().ref)}</b><button class="change">Anderen wählen</button></div>` : ''}
+      ${r.levelUp ? `<div class="next-verse">${W.icon('search')}<span>Als Nächstes: <b>Level ${r.levelUp + 1}</b>. Den Vers wählst du gleich selbst.</span></div>` : ''}
       <div class="stat-row">
         <div class="stat-box xp"><div class="sb-label">EP gesamt</div><div class="sb-val">${W.icon('bolt')}<span data-c="${r.xp}">0</span></div></div>
         <div class="stat-box acc"><div class="sb-label">Genauigkeit</div><div class="sb-val">${W.icon('target')}<span data-c="${r.accuracy}" data-s="%">0</span></div></div>
@@ -271,8 +273,7 @@ W.end = (() => {
         : `<div class="goal-note muted">Tagesziel: ${W.store.xpToday()} / ${s.dailyGoal} EP</div>`}
     `, 'Weiter', next);
     screen.querySelectorAll('[data-c]').forEach(e => countUp(e, +e.dataset.c, 900, e.dataset.s || ''));
-    const nv = screen.querySelector('.next-verse .change');
-    if (nv) nv.addEventListener('click', () => { W.sound.play('tap'); W.ui.pickerModal(v => { screen.querySelector('.next-verse b').textContent = v.ref; }); });
+
     W.sound.play('complete');
     W.fx.confetti(screen);
     return cleanup;

@@ -32,7 +32,7 @@ W.store = (() => {
       ach: {},         // Erfolg → Datum
       stats: { lessons: 0, perfect: 0, correct: 0, answered: 0, bestCombo: 0, reviews: 0 },
       goalDate: null,
-      focus: null,     // Vers, den du gerade lernen willst (frei gewählt)
+      levels: [],      // Level → gewählter Vers (Level 1 = Index 0)
       custom: []       // eigene Verse { id, ref, text }
     };
   }
@@ -46,6 +46,14 @@ W.store = (() => {
       if (raw) st = Object.assign(defaults(), JSON.parse(raw));
     } catch (e) {}
     registerCustom(st.custom);
+    if (!Array.isArray(st.levels)) st.levels = [];
+    if (!st.levels.length) {
+      // Übernahme aus früheren Versionen: gemeisterte Verse zuerst, dann der begonnene bzw. gewählte Vers
+      const ids = Object.keys(st.progress).filter(id => W.VERSES[id] && st.progress[id] > 0);
+      const done = ids.filter(id => st.progress[id] >= STAGES), open = ids.filter(id => st.progress[id] < STAGES);
+      if (st.focus && W.VERSES[st.focus] && !open.includes(st.focus) && !done.includes(st.focus)) open.unshift(st.focus);
+      st.levels = done.concat(open.slice(0, 1));
+    }
     return st;
   }
 
@@ -67,7 +75,7 @@ W.store = (() => {
   function removeCustom(id) {
     s.custom = s.custom.filter(c => c.id !== id);
     delete s.progress[id]; delete s.mem[id];
-    if (s.focus === id) s.focus = null;
+    s.levels = s.levels.map(x => x === id ? null : x);
     registerCustom(s.custom); save();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
@@ -84,36 +92,73 @@ W.store = (() => {
   const learnedToday = () => s.lastActive === today();
   const xpToday = () => s.days[today()] || 0;
 
-  // Der Pfad: Verse, Truhen (nach dem 3. Vers) und Einheiten-Wiederholung
+  // ---------- Level ----------
+  // Der Lernpfad besteht aus Leveln. Für jedes Level wählst du selbst einen Vers.
+  // Ein Level ist geschafft, wenn sein Vers gemeistert ist (3 Lektionen). Dann geht es mit dem nächsten Level weiter.
+  const SECTION_SIZE = 5;
+  const SECTION_NAMES = [
+    ['Erste Schritte', 'Der Same wird gepflanzt'], ['Wurzeln schlagen', 'Das Wort fasst Fuß'], ['Wachsen', 'Jeden Tag ein Stück'],
+    ['Frucht bringen', 'Was im Herzen wohnt'], ['Fest verwurzelt', 'Wie ein Baum am Wasser'], ['Licht sein', 'Das Licht der Welt'],
+    ['Tief gegründet', 'Auf Felsen gebaut'], ['Reiche Ernte', 'Zu seiner Zeit']
+  ];
+  const levelList = () => s.levels;
+  function currentLevel() {
+    let i = 0;
+    while (s.levels[i] && W.VERSES[s.levels[i]] && isMastered(s.levels[i])) i++;
+    return i;
+  }
+  const levelVerse = i => (s.levels[i] && W.VERSES[s.levels[i]]) || null;
+  const levelOfVerse = id => s.levels.indexOf(id);
+  // Vers für das aktuelle Level festlegen (oder wechseln)
+  function setLevelVerse(id) {
+    const cur = currentLevel();
+    const at = s.levels.indexOf(id);
+    if (at >= 0 && at < cur) return false;      // schon in einem geschafften Level
+    if (at > cur) s.levels[at] = null;
+    s.levels[cur] = id;
+    save();
+    return true;
+  }
+  function section(k) {
+    const u = W.UNITS[k % W.UNITS.length], nm = SECTION_NAMES[k] || [`Abschnitt ${k + 1}`, 'Immer weiter'];
+    return { id: 's' + (k + 1), index: k, title: nm[0], subtitle: nm[1], color: u.color, dark: u.dark, from: k * SECTION_SIZE, to: k * SECTION_SIZE + SECTION_SIZE - 1 };
+  }
   function pathNodes() {
+    const cur = currentLevel();
+    const sections = Math.max(2, Math.floor(cur / SECTION_SIZE) + 2);
     const nodes = [];
-    W.UNITS.forEach(u => {
-      u.verses.forEach((v, i) => {
-        nodes.push({ kind: 'verse', id: v.id, unit: u, verse: v });
-        if (i === 2) nodes.push({ kind: 'chest', id: 'chest-' + u.id, unit: u });
-      });
-      nodes.push({ kind: 'review', id: 'review-' + u.id, unit: u });
-    });
-    // Alle Verse sind frei wählbar. Truhe: ab 3 gemeisterten Versen der Einheit, Wiederholung: wenn alle 5 sitzen.
-    const fid = focusId();
-    nodes.forEach(n => {
-      const mastered = n.unit.verses.filter(v => isMastered(v.id)).length;
-      if (n.kind === 'verse') { n.done = isMastered(n.id); n.locked = false; n.current = n.id === fid; }
-      else if (n.kind === 'chest') { n.done = !!s.chests[n.id]; n.locked = mastered < 3; n.current = !n.locked && !n.done; }
-      else { n.done = !!s.unitsDone[n.unit.id]; n.locked = mastered < n.unit.verses.length; n.current = !n.locked && !n.done; }
-    });
+    for (let k = 0; k < sections; k++) {
+      const sec = section(k);
+      const doneInSec = () => { let n = 0; for (let i = sec.from; i <= sec.to; i++) if (i < cur) n++; return n; };
+      for (let i = sec.from; i <= sec.to; i++) {
+        const v = levelVerse(i);
+        nodes.push({ kind: 'level', level: i, id: 'lvl-' + i, verse: v, unit: sec, section: sec, done: i < cur, current: i === cur, locked: i > cur });
+        if (i === sec.from + 2) {
+          const id = 'chest-' + sec.id, n = doneInSec();
+          nodes.push({ kind: 'chest', id, unit: sec, section: sec, done: !!s.chests[id], locked: n < 3, current: n >= 3 && !s.chests[id] });
+        }
+      }
+      const n = doneInSec();
+      const verses = [];
+      for (let i = sec.from; i <= sec.to; i++) if (levelVerse(i)) verses.push(levelVerse(i));
+      nodes.push({ kind: 'review', id: 'review-' + sec.id, unit: sec, section: sec, verses, done: !!s.unitsDone[sec.id], locked: n < SECTION_SIZE, current: n >= SECTION_SIZE && !s.unitsDone[sec.id] });
+    }
     return nodes;
   }
 
-  // Dein Lernvers: frei gewählt, sonst der nächste noch nicht gemeisterte Vers
-  function focusId() {
-    if (s.focus && W.VERSES[s.focus] && !isMastered(s.focus)) return s.focus;
-    const next = allVerses().find(v => stageOf(v.id) > 0 && !isMastered(v.id)) || allVerses().find(v => !isMastered(v.id));
-    return next ? next.id : null;
-  }
+  // Dein Lernvers = der Vers des aktuellen Levels (noch nicht gewählt: null)
+  function focusId() { const v = levelVerse(currentLevel()); return v ? v.id : null; }
   const focusVerse = () => { const id = focusId(); return id ? W.VERSES[id] : null; };
-  function setFocus(id) { s.focus = id; save(); }
-  const currentNode = () => { const v = focusVerse(); return v ? { kind: 'verse', id: v.id, verse: v, unit: unitOf(v), done: false, locked: false, current: true } : null; };
+  const setFocus = id => setLevelVerse(id);
+  // Vorschläge: die bekanntesten Verse, die noch in keinem Level stecken
+  function suggestions(n = 6, offset = 0) {
+    const taken = new Set(s.levels.filter(Boolean));
+    return W.TOP.map(id => W.VERSES[id]).filter(v => v && !taken.has(v.id) && !isMastered(v.id)).slice(offset, offset + n);
+  }
+  const currentNode = () => {
+    const i = currentLevel(), v = levelVerse(i), sec = section(Math.floor(i / SECTION_SIZE));
+    return { kind: 'level', level: i, id: 'lvl-' + i, verse: v, unit: sec, section: sec, done: false, locked: false, current: true };
+  };
 
   // ---------- Baum ----------
   const growth = (days = totalDays()) => days <= 0 ? 0.55 : Math.min(8.4, 1 + 7.4 * (1 - Math.exp(-(days - 1) / 30)));
@@ -200,17 +245,17 @@ W.store = (() => {
     { id: 'verse1', icon: 'fruit', title: 'Erste Frucht', text: 'Den ersten Vers gemeistert', test: () => masteredCount() >= 1 },
     { id: 'streak3', icon: 'flame', title: 'Gut gegossen', text: '3 Tage in Folge gelernt', test: () => s.streak >= 3 },
     { id: 'streak7', icon: 'flame', title: 'Eine Woche treu', text: '7 Tage in Folge gelernt', test: () => s.streak >= 7 },
-    { id: 'unit1', icon: 'trophy', title: 'Einheit geschafft', text: 'Die erste Einheit abgeschlossen', test: () => Object.keys(s.unitsDone).length >= 1 },
+    { id: 'unit1', icon: 'trophy', title: 'Abschnitt geschafft', text: 'Die ersten 5 Level abgeschlossen', test: () => Object.keys(s.unitsDone).length >= 1 },
     { id: 'combo10', icon: 'bolt', title: 'Im Fluss', text: '10 Aufgaben in Folge richtig', test: () => s.stats.bestCombo >= 10 },
     { id: 'perfect5', icon: 'star', title: 'Fehlerlos', text: '5 Lektionen ohne Fehler', test: () => s.stats.perfect >= 5 },
-    { id: 'verse10', icon: 'fruit', title: 'Fruchtbar', text: '10 Verse gemeistert', test: () => masteredCount() >= 10 },
+    { id: 'verse10', icon: 'fruit', title: 'Fruchtbar', text: '10 Level geschafft', test: () => currentLevel() >= 10 },
     { id: 'early', icon: 'sun', title: 'Frühaufsteher', text: 'Vor 8 Uhr morgens gelernt', test: () => false },
     { id: 'night', icon: 'moon', title: 'Nachtwache', text: 'Nach 22 Uhr gelernt', test: () => false },
     { id: 'streak30', icon: 'tree', title: 'Tief verwurzelt', text: '30 Tage in Folge gelernt', test: () => s.streak >= 30 },
     { id: 'xp1000', icon: 'bolt', title: 'Tausend EP', text: '1000 Erfahrungspunkte gesammelt', test: () => s.xp >= 1000 },
     { id: 'tree30', icon: 'tree', title: 'Kräftiger Baum', text: 'An 30 Tagen gelernt', test: () => totalDays() >= 30 },
     { id: 'streak100', icon: 'flame', title: 'Hundert Tage', text: '100 Tage in Folge gelernt', test: () => s.streak >= 100 },
-    { id: 'all', icon: 'crown', title: 'Ganzer Garten', text: 'Alle 45 Verse gemeistert', test: () => W.VERSE_LIST.every(v => isMastered(v.id)) }
+    { id: 'all', icon: 'crown', title: 'Level 50', text: '50 Level geschafft', test: () => currentLevel() >= 50 }
   ];
   function checkAchievements(extra = {}) {
     const fresh = [];
@@ -228,8 +273,9 @@ W.store = (() => {
     const t = today();
     const before = {
       streak: s.streak, days: totalDays(), g: growth(), rg: rootGrowth(), mastered: masteredCount(),
-      stage: treeStage().index, xpToday: xpToday(), learnedToday: learnedToday()
+      stage: treeStage().index, xpToday: xpToday(), learnedToday: learnedToday(), level: currentLevel()
     };
+    let levelUp = 0;
     // Serie
     if (s.lastActive !== t) {
       s.streak = s.lastActive && daysBetween(s.lastActive, t) === 1 ? s.streak + 1 : 1;
@@ -251,7 +297,10 @@ W.store = (() => {
       const id = r.verseIds[0];
       s.progress[id] = Math.min(STAGES, stageOf(id) + 1);
       memInit(id);
-      if (s.progress[id] === STAGES) { newlyMastered.push(id); memUpdate(id, 1); if (s.focus === id) s.focus = null; }
+      if (s.progress[id] === STAGES) {
+        newlyMastered.push(id); memUpdate(id, 1);
+        if (s.levels[before.level] === id) levelUp = before.level + 1;
+      }
     } else {
       Object.entries(r.verseScores).forEach(([id, sc]) => memUpdate(id, sc.total ? sc.ok / sc.total : 1));
       if (r.kind === 'unit') s.unitsDone[r.unitId] = t;
@@ -288,7 +337,7 @@ W.store = (() => {
       before,
       after: { streak: s.streak, days: totalDays(), g: growth(), rg: rootGrowth(), mastered: masteredCount(), stage: treeStage().index },
       firstToday: !before.learnedToday,
-      newlyMastered, goalReached, questDone, gems, achievements: fresh
+      newlyMastered, levelUp, goalReached, questDone, gems, achievements: fresh
     };
   }
 
@@ -309,7 +358,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    pathNodes, currentNode, focusId, focusVerse, setFocus, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
+    pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();
