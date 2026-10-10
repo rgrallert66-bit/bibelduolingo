@@ -2,31 +2,20 @@
 window.W = window.W || {};
 
 W.lesson = (() => {
-  const PRAISE = ['Wunderbar!', 'Richtig!', 'Super!', 'Hervorragend!', 'Genau so!', 'Klasse!', 'Stark!', 'Perfekt!'];
   const esc = s => W.ex.esc(s);
 
   // cfg: { kind:'learn'|'review'|'practice'|'unit'|'loop', verse, unitId, verses, onExit }
-  // 'loop' = Dauerschleife: immer neue Aufgaben aus den gewählten Versen, bis du aufhörst.
-  const LOOP_MIN = 5;
+  // Alle Lektionen nutzen die Anfangsbuchstaben-Methode; der Ablauf kommt aus W.ex.plan().
+  // 'loop' = Dauerschleife: immer weiter, bis man auf „Fertig“ tippt.
+  const LOOP_MIN = 3;
   function start(cfg) {
     const s = W.store.get();
     const loop = cfg.kind === 'loop';
-    const misses = {};
-    // Schwächere und zuletzt falsch beantwortete Verse kommen öfter dran
-    function loopBatch() {
-      const pool = cfg.verses.map(v => ({ v, w: 1.4 - W.store.strength(v.id) + (misses[v.id] || 0) * 0.5 + Math.random() * 0.6 }));
-      pool.sort((a, b) => b.w - a.w);
-      const pick = pool.slice(0, Math.min(2, pool.length)).map(x => x.v);
-      return W.ex.reviewLesson(pick, pick.length === 1 ? 3 : 4);
-    }
-    let list;
-    if (cfg.kind === 'learn') list = W.ex.learnLesson(cfg.verse, W.store.stageOf(cfg.verse.id));
-    else if (loop) list = loopBatch();
-    else list = W.ex.reviewLesson(cfg.verses, cfg.kind === 'unit' ? 10 : 8);
-    const gradedTotal = list.filter(e => e.graded).length;
+    const plan = W.ex.plan(cfg);
     const firstUnitClear = cfg.kind === 'unit' && !s.unitsDone[cfg.unitId];
-    const st = { queue: list.slice(), done: 0, answered: 0, correct: 0, combo: 0, maxCombo: 0, mistakes: 0, scores: {}, t0: Date.now() };
-    let cur = null, phase = 'answer', keysFn = null, typingFn = null, readyFlag = false;
+    // rounds = Runden, perfect = fehlerfreie Runden, hits/misses = Buchstaben
+    const st = { rounds: 0, perfect: 0, hits: 0, misses: 0, combo: 0, maxCombo: 0, mistakes: 0, scores: {}, t0: Date.now() };
+    let cur = null, lastRes = null, phase = 'answer', typingFn = null;
 
     const root = document.getElementById('overlay-root');
     const el = document.createElement('div');
@@ -35,8 +24,8 @@ W.lesson = (() => {
       <header class="lesson-top">
         <button class="icon-btn close" aria-label="Lektion beenden">${W.icon('close')}</button>
         <div class="bar"><div class="bar-fill"><span class="bar-shine"></span></div></div>
-        <div class="combo-pill" hidden>${W.icon('bolt')}<span>0</span></div>
-        ${loop ? `<div class="loop-count" title="Richtige Antworten">${W.icon('loop')}<span>0</span></div><button class="btn soft loop-done">Fertig</button>` : ''}
+        <div class="combo-pill" hidden title="Buchstaben in Folge richtig">${W.icon('bolt')}<span>0</span></div>
+        ${loop ? `<div class="loop-count" title="Fehlerfreie Runden">${W.icon('loop')}<span>0</span></div><button class="btn soft loop-done">Fertig</button>` : ''}
       </header>
       <main class="ex-area"></main>
       <footer class="lesson-foot">
@@ -45,95 +34,76 @@ W.lesson = (() => {
           <div class="fb-text"><div class="fb-title"></div><div class="fb-sol"></div></div>
         </div>
         <div class="foot-row">
-          <button class="btn ghost skip">Überspringen</button>
           <span class="kbd-hint"><kbd>Enter</kbd> zum Bestätigen</span>
-          <button class="btn primary big main" disabled>Überprüfen</button>
+          <button class="btn primary big main" disabled>Weiter</button>
         </div>
       </footer>`;
     root.appendChild(el);
     document.body.classList.add('no-scroll');
     const area = el.querySelector('.ex-area'), foot = el.querySelector('.lesson-foot');
-    const btn = el.querySelector('.main'), skip = el.querySelector('.skip'), fb = el.querySelector('.feedback');
+    const btn = el.querySelector('.main'), fb = el.querySelector('.feedback');
     const barFill = el.querySelector('.bar-fill'), comboPill = el.querySelector('.combo-pill');
 
     function setBar() {
-      if (loop) {
-        const r = st.correct % 10;
-        barFill.style.width = Math.max(4, (r === 0 && st.correct ? 10 : r) * 10) + '%';
-        el.querySelector('.loop-count span').textContent = st.correct;
-        return;
-      }
-      const p = gradedTotal ? st.done / gradedTotal : 1;
-      barFill.style.width = Math.max(4, p * 100) + '%';
+      barFill.style.width = Math.max(4, plan.progress() * 100) + '%';
+      if (loop) el.querySelector('.loop-count span').textContent = st.perfect;
     }
 
     function mountNext() {
-      if (loop && st.queue.length < 2) st.queue.push(...loopBatch());
-      if (!st.queue.length) return finish();
-      cur = st.queue.shift();
-      phase = 'answer'; keysFn = null; typingFn = null; readyFlag = false;
+      cur = plan.next(lastRes, cur);
+      if (!cur) return finish();
+      phase = 'answer'; typingFn = null;
       foot.className = 'lesson-foot'; fb.hidden = true;
-      btn.textContent = 'Überprüfen'; btn.disabled = true;
-      skip.hidden = !cur.graded || cur.type === 'letters';
+      btn.textContent = 'Weiter'; btn.disabled = true;
+      btn.hidden = !!cur.auto;
       area.classList.remove('enter'); void area.offsetWidth; area.classList.add('enter');
       area.innerHTML = '';
       const ctx = {
-        ready(b, label) { readyFlag = b; if (phase === 'answer') { btn.disabled = !b; if (label) btn.textContent = label; } },
-        keys(fn) { keysFn = fn; },
+        ready(b, label) { if (phase === 'answer') { btn.disabled = !b; if (label) btn.textContent = label; } },
         typing(fn) { typingFn = fn; },
-        done() { setTimeout(() => evaluate(), 350); }
+        hit(ok) {
+          if (ok) {
+            st.hits++; st.combo++; st.maxCombo = Math.max(st.maxCombo, st.combo);
+            if ([10, 25, 50, 75, 100, 150, 200].includes(st.combo)) comboToast(st.combo);
+          } else { st.misses++; st.combo = 0; }
+          comboPill.hidden = st.combo < 5;
+          comboPill.querySelector('span').textContent = st.combo;
+        },
+        done() { setTimeout(() => evaluate(), 380); }
       };
       cur.mount(area, ctx);
-      if (cur.auto) { btn.hidden = true; } else btn.hidden = false;
       area.scrollTop = 0;
     }
 
-    function evaluate(skipped) {
+    function evaluate() {
       if (phase !== 'answer') return;
-      if (!cur.graded) { mountNext(); return; }
+      if (!cur.graded) { lastRes = null; mountNext(); return; }
       phase = 'feedback';
-      const res = skipped ? { ok: false, solution: cur.check().solution } : cur.check();
+      const res = cur.check();
+      lastRes = res;
       const v = cur.verse;
-      st.answered++;
+      st.rounds++; st.mistakes += res.mistakes;
       st.scores[v.id] = st.scores[v.id] || { ok: 0, total: 0 };
-      st.scores[v.id].total++;
+      if (cur.ratio >= 1) { st.scores[v.id].total++; if (res.ok) st.scores[v.id].ok++; }
       if (res.ok) {
-        st.correct++; st.combo++; st.maxCombo = Math.max(st.maxCombo, st.combo);
-        st.scores[v.id].ok++;
-        W.sound.play('correct'); W.sound.buzz(12);
-        if (loop && st.correct % 10 === 0) setTimeout(() => comboToast(st.correct, `${st.correct} richtig!`), 260);
-        else if ([3, 5, 8, 10, 15, 20].includes(st.combo)) setTimeout(() => comboToast(st.combo), 260);
-      } else {
-        st.combo = 0; st.mistakes++;
-        W.sound.play('wrong'); W.sound.buzz([40, 40, 40]);
-        misses[v.id] = (misses[v.id] || 0) + 1;
-        if (loop && cur.type !== 'letters') st.queue.splice(Math.min(2, st.queue.length), 0, cur);
-        else if (cur.type !== 'letters') st.queue.push(cur);
-      }
-      if (res.ok || cur.type === 'letters') st.done++;
+        st.perfect++;
+        W.sound.play(cur.ratio >= 1 ? 'combo' : 'correct'); W.sound.buzz(12);
+      } else { W.sound.play('wrong'); W.sound.buzz([40, 40, 40]); }
       setBar();
-      comboPill.hidden = st.combo < 2;
-      comboPill.querySelector('span').textContent = st.combo;
-      if (st.combo >= 2) { comboPill.classList.remove('bump'); void comboPill.offsetWidth; comboPill.classList.add('bump'); }
-
       foot.className = 'lesson-foot ' + (res.ok ? 'is-ok' : 'is-bad');
       fb.hidden = false;
       fb.querySelector('.fb-icon').innerHTML = W.icon(res.ok ? 'check' : 'close');
-      fb.querySelector('.fb-title').textContent = res.ok ? PRAISE[Math.floor(Math.random() * PRAISE.length)] : (cur.type === 'letters' ? 'Fast! Übe ihn weiter.' : 'Richtige Lösung:');
-      const sol = fb.querySelector('.fb-sol');
-      sol.innerHTML = res.ok && !res.plain ? '' : (res.solution || '');
-      if (!res.ok && cur.type !== 'letters' && cur.type !== 'ref') sol.innerHTML += ` <span class="fb-ref">${esc(v.ref)}</span>`;
-      skip.hidden = true; btn.hidden = false;
-      btn.disabled = false; btn.textContent = 'Weiter';
-      area.querySelectorAll('button').forEach(b => { if (!b.classList.contains('speak')) b.disabled = true; });
+      fb.querySelector('.fb-title').textContent = res.title;
+      fb.querySelector('.fb-sol').innerHTML = res.solution;
+      btn.hidden = false; btn.disabled = false; btn.textContent = 'Weiter';
       btn.focus({ preventScroll: true });
     }
 
-    function comboToast(n, text) {
+    function comboToast(n) {
       W.sound.play('combo');
       const t = document.createElement('div');
       t.className = 'combo-toast';
-      t.innerHTML = `${W.icon('bolt')}<b>${text || n + ' in Folge!'}</b>`;
+      t.innerHTML = `${W.icon('bolt')}<b>${n} Buchstaben in Folge!</b>`;
       el.appendChild(t);
       setTimeout(() => t.remove(), 1500);
     }
@@ -142,12 +112,11 @@ W.lesson = (() => {
       W.sound.play('tap');
       if (phase === 'answer') evaluate(); else mountNext();
     });
-    skip.addEventListener('click', () => { W.sound.play('tap'); evaluate(true); });
     function stopLoop() {
-      if (st.answered >= LOOP_MIN) { W.sound.play('tap'); finish(); return; }
+      if (st.rounds >= LOOP_MIN) { W.sound.play('tap'); finish(); return; }
       W.ui.confirm({
         mood: 'normal', title: 'Schon aufhören?',
-        text: `Ab ${LOOP_MIN} Aufgaben zählt die Runde für Serie und EP. Du hast ${st.answered} geschafft.`,
+        text: `Ab ${LOOP_MIN} Runden zählt die Dauerschleife für Serie und EP. Du hast ${st.rounds} geschafft.`,
         yes: 'Weiterüben', no: 'Beenden', onNo: () => close(null)
       });
     }
@@ -166,8 +135,7 @@ W.lesson = (() => {
       if (!el.isConnected || document.querySelector('.modal-back')) return;
       if (e.key === 'Enter') { if (!btn.disabled && !btn.hidden) { e.preventDefault(); btn.click(); } return; }
       if (phase !== 'answer' || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (typingFn && e.key.length === 1) { typingFn(e.key); return; }
-      if (keysFn && /^[1-9]$/.test(e.key)) keysFn(e.key);
+      if (typingFn && e.key.length === 1) typingFn(e.key);
     }
     document.addEventListener('keydown', onKey);
 
@@ -182,16 +150,16 @@ W.lesson = (() => {
     function finish() {
       const perfect = st.mistakes === 0;
       const base = cfg.kind === 'unit' ? 15 : 10;
-      const xp = loop ? Math.min(60, st.correct) : base + (perfect ? 5 : 0) + Math.floor(st.maxCombo / 5) * 2;
+      const xp = loop ? Math.min(60, st.rounds * 2 + st.perfect * 2) : base + (perfect ? 5 : 0) + Math.min(5, Math.floor(st.maxCombo / 25));
       const r = W.store.finishLesson({
         kind: loop ? 'practice' : cfg.kind, verseIds: cfg.verse ? [cfg.verse.id] : cfg.verses.map(v => v.id),
-        verseScores: st.scores, correct: st.correct, answered: st.answered,
+        verseScores: st.scores, correct: st.perfect, answered: st.rounds,
         maxCombo: st.maxCombo, perfect, xp, unitId: cfg.unitId, firstUnitClear
       });
       r.xp = xp; r.perfect = perfect; r.firstUnitClear = firstUnitClear;
-      r.accuracy = st.answered ? Math.round(st.correct / st.answered * 100) : 100;
+      r.accuracy = st.hits + st.misses ? Math.round(st.hits / (st.hits + st.misses) * 100) : 100;
       r.secs = Math.round((Date.now() - st.t0) / 1000);
-      r.answered = st.answered; r.correct = st.correct;
+      r.answered = st.rounds; r.correct = st.perfect;
       document.removeEventListener('keydown', onKey);
       W.end.run(el, cfg, r, () => close(r));
     }
@@ -256,7 +224,7 @@ W.end = (() => {
       if (r.levelUp) title = `Level ${r.levelUp} geschafft!`;
       sub = st >= W.store.STAGES ? `<b>${esc(cfg.verse.ref)}</b> sitzt! Vers gemeistert.` : `${L ? `Level ${L} · ` : ''}${esc(cfg.verse.ref)} · Lektion ${st} von ${W.store.STAGES}`;
     } else if (cfg.kind === 'unit') { title = 'Einheit abgeschlossen!'; sub = 'Alle fünf Verse wiederholt.'; }
-    else if (cfg.kind === 'loop') { title = 'Gut wiederholt!'; sub = `${r.answered} Aufgaben in der Dauerschleife, davon ${r.correct} richtig. Jede Wiederholung festigt die Verse.`; }
+    else if (cfg.kind === 'loop') { title = 'Gut wiederholt!'; sub = `${r.answered} ${r.answered === 1 ? 'Runde' : 'Runden'} in der Dauerschleife, davon ${r.correct} fehlerfrei. Jede Wiederholung festigt die Verse.`; }
     else sub = `${cfg.verses.length === 1 ? '1 Vers' : cfg.verses.length + ' Verse'} wiederholt. Dein Gedächtnis wird stärker.`;
     const m = Math.floor(r.secs / 60), sec = String(r.secs % 60).padStart(2, '0');
     const cleanup = frame(screen, `

@@ -570,7 +570,7 @@ W.ui = (() => {
   function addOwnModal(onAdded) {
     const m = modal(`
       <h2>Eigenen Vers hinzufügen</h2>
-      <p>Jeder Vers, der dir wichtig ist, in der Übersetzung deiner Wahl. Er wird mit allen Aufgabentypen geübt.</p>
+      <p>Jeder Vers, der dir wichtig ist, in der Übersetzung deiner Wahl. Du lernst ihn wie alle anderen mit den Anfangsbuchstaben.</p>
       <form class="own-form" novalidate>
         <label for="own-ref">Bibelstelle</label>
         <input id="own-ref" class="text-in" maxlength="40" placeholder="z. B. Römer 12,12" autocomplete="off">

@@ -10,14 +10,16 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
   Eigene Verse in beliebiger Übersetzung lassen sich ebenfalls wählen. Ein Level ist geschafft, wenn sein Vers sitzt (3 Lektionen: kennenlernen, festigen, meistern);
   danach öffnet sich das nächste Level. Je 5 Level bilden einen Abschnitt mit Schatztruhe (nach 3 Leveln) und gemischter Wiederholung (nach 5 Leveln).
 - **114 Verse** in 9 Themen (Grundlagen, Vertrauen, Mut, Liebe, Licht & Segen, Tief verwurzelt, Freude, Hoffnung, Gnade), darunter Vaterunser und Aaronitischer Segen.
-- **Aufgaben:** fehlendes Wort wählen, Lücken füllen, Vers aus Wortkacheln zusammensetzen, falsches Wort finden,
-  Bibelstelle zuordnen und den Vers aus dem Gedächtnis schreiben (nur den ersten Buchstaben jedes Wortes tippen).
+- **Lernmethode Anfangsbuchstaben:** Zuerst liest du den Vers. Dann fehlen einige Wörter, und du tippst nur den ersten Buchstaben jedes fehlenden Wortes.
+  Runde für Runde verschwinden mehr Wörter (25 % → 50 % → 75 %), zuletzt der ganze Vers. Diese letzte Runde wiederholt sich, bis sie ohne einen einzigen Fehler gelingt;
+  nach Fehlern siehst du den Vers kurz noch einmal. Ein Vers hat 3 Lektionen: Lektion 1 beginnt bei 25 %, Lektion 2 bei 50 %, Lektion 3 direkt ganz aus dem Gedächtnis.
+  Wiederholungen und Dauerschleife nutzen dieselbe Methode.
 - **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag. Höhe und Wurzeltiefe werden realistisch angezeigt (Keimling: 10 cm hoch, 4 cm Wurzeln; nach einem Jahr: etwa 7,6 m hoch, 2,4 m Wurzeln).
   Die Wurzeln reichen tiefer, je länger deine Serie ist. Jeder gemeisterte Vers hängt als Frucht am Baum.
   Wenn du heute noch nicht gelernt hast, hat der Baum Durst.
 - **Motivation:** tägliche Serie (blaue Flamme), Tagesziel, drei Tagesaufgaben, Perlen, Regenwolken als Serienschutz,
   15 Erfolge, Kombo-Anzeige, Konfetti und Töne.
-- **Dauerschleife:** Gelernte Verse ohne Ende wiederholen, bis du auf „Fertig“ tippst. Wähle alle gelernten, nur fällige, nur gemeisterte oder einzelne Verse. Schwächere und zuletzt falsch beantwortete Verse kommen öfter dran. Ab 5 Aufgaben zählt die Runde für Serie und EP (1 EP pro richtiger Antwort, höchstens 60).
+- **Dauerschleife:** Gelernte Verse ohne Ende wiederholen, bis du auf „Fertig“ tippst. Wähle alle gelernten, nur fällige, nur gemeisterte oder einzelne Verse. Schwächere und zuletzt falsch beantwortete Verse kommen öfter dran. Ab 3 Runden zählt die Dauerschleife für Serie und EP.
 - **Wiederholung:** Gelernte Verse werden nach einem Zeitplan (1, 2, 4, 7, 14, 30 Tage) wieder fällig, damit sie dauerhaft sitzen.
 - **Töne** werden direkt im Browser erzeugt (Web Audio). Neue Verse können vorgelesen werden (Sprachausgabe des Geräts).
 
@@ -49,7 +51,7 @@ node tools/build-single.mjs dist/glaubensbaum.html
 | `js/verses.js` | Einheiten und Verse |
 | `js/store.js` | Spielstand, Serie, Baumwachstum, Wiederholungsplan, Aufgaben, Erfolge |
 | `js/tree.js` | Der Baum, gezeichnet auf `<canvas>` |
-| `js/exercises.js` | Aufgabentypen und Zusammenstellung der Lektionen |
+| `js/exercises.js` | Anfangsbuchstaben-Runden und Ablauf der Lektionen |
 | `js/lesson.js` | Lektionsablauf und Abschluss-Bildschirme |
 | `js/ui.js` | Bildschirme: Baum, Lernen, Profil, Dialoge; auf dem PC mit Seitenleiste und rechter Spalte |
 | `js/sound.js` | Töne und Vorlesen |

@@ -219,8 +219,8 @@ W.store = (() => {
   const QUEST_POOL = [
     () => ({ kind: 'xp', goal: s.dailyGoal + 10, text: n => `Verdiene ${n} EP`, gems: 15 }),
     () => ({ kind: 'lessons', goal: 2, text: n => `Schließe ${n} Lektionen ab`, gems: 15 }),
-    () => ({ kind: 'combo', goal: 6, text: n => `Beantworte ${n} Aufgaben in Folge richtig`, gems: 10 }),
-    () => ({ kind: 'correct', goal: 15, text: n => `Löse ${n} Aufgaben richtig`, gems: 10 }),
+    () => ({ kind: 'combo', goal: 40, text: n => `Tippe ${n} Buchstaben in Folge richtig`, gems: 10 }),
+    () => ({ kind: 'correct', goal: 3, text: n => `Schaffe ${n} Runden fehlerfrei`, gems: 10 }),
     () => ({ kind: 'perfect', goal: 1, text: () => 'Schließe eine Lektion ohne Fehler ab', gems: 20 }),
     () => ({ kind: 'review', goal: 1, text: () => 'Wiederhole einen gelernten Vers', gems: 15 })
   ];
@@ -246,8 +246,8 @@ W.store = (() => {
     { id: 'streak3', icon: 'flame', title: 'Gut gegossen', text: '3 Tage in Folge gelernt', test: () => s.streak >= 3 },
     { id: 'streak7', icon: 'flame', title: 'Eine Woche treu', text: '7 Tage in Folge gelernt', test: () => s.streak >= 7 },
     { id: 'unit1', icon: 'trophy', title: 'Abschnitt geschafft', text: 'Die ersten 5 Level abgeschlossen', test: () => Object.keys(s.unitsDone).length >= 1 },
-    { id: 'combo10', icon: 'bolt', title: 'Im Fluss', text: '10 Aufgaben in Folge richtig', test: () => s.stats.bestCombo >= 10 },
-    { id: 'perfect5', icon: 'star', title: 'Fehlerlos', text: '5 Lektionen ohne Fehler', test: () => s.stats.perfect >= 5 },
+    { id: 'combo10', icon: 'bolt', title: 'Im Fluss', text: '50 Buchstaben in Folge richtig', test: () => s.stats.bestCombo >= 50 },
+    { id: 'perfect5', icon: 'star', title: 'Fehlerlos', text: '5 Lektionen ganz ohne Fehler', test: () => s.stats.perfect >= 5 },
     { id: 'verse10', icon: 'fruit', title: 'Fruchtbar', text: '10 Level geschafft', test: () => currentLevel() >= 10 },
     { id: 'early', icon: 'sun', title: 'Frühaufsteher', text: 'Vor 8 Uhr morgens gelernt', test: () => false },
     { id: 'night', icon: 'moon', title: 'Nachtwache', text: 'Nach 22 Uhr gelernt', test: () => false },

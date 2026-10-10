@@ -598,6 +598,27 @@ p { margin: 0; }
 .sug-chip.more { background: transparent; border: 1.5px solid var(--line); }
 @media (min-width: 700px) { .lp-body .verse-opts { grid-template-columns: 1fr 1fr; } }
 
+/* ---------- Anfangsbuchstaben-Runden ---------- */
+.round-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.round-chip { background: var(--primary); color: #fff; font-weight: 700; font-size: 13px; padding: 4px 12px; border-radius: 12px; }
+.round-chip:empty { display: none; }
+.round-meter { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.round-meter i { width: 18px; height: 8px; border-radius: 4px; background: var(--line); }
+.round-meter i.on { background: var(--primary-3); }
+.round-meter b { margin-left: 6px; font-weight: 600; }
+.round-stats { display: flex; justify-content: center; gap: 18px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.round-stats span { display: inline-flex; align-items: center; gap: 4px; }
+.round-stats .ic { width: 16px; height: 16px; }
+.round-stats .rs-ok .ic { color: var(--primary); }
+.round-stats .rs-bad .ic { color: var(--bad); }
+.round-stats b { color: var(--ink); }
+.lw.hid .lw-core { background: var(--soft-2); border-radius: 6px 6px 0 0; }
+.lw.hid.cur .lw-core { background: #dceafb; }
+/* Während des Tippens braucht es keinen Knopf unten: mehr Platz für die Tastatur */
+.kbd-tip { display: none; text-align: center; color: var(--muted); font-size: 14px; margin-top: -6px; }
+@media (hover: hover) and (min-width: 700px) { .kbd-tip { display: block; } }
+.lesson-foot:has(.main[hidden]):not(.is-ok):not(.is-bad) { display: none; }
+
 /* ---------- PC-Ansicht ---------- */
 .brand, .side, .kbd-hint { display: none; }
 kbd { font: inherit; font-size: .85em; font-weight: 600; background: var(--white); border: 1.5px solid var(--line-2); border-bottom-width: 3px; border-radius: 7px; padding: 0 6px; color: var(--ink-2); }
