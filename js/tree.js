@@ -46,7 +46,8 @@ W.tree = (() => {
     return root;
   }
   const TREE = build(7, 8, false);
-  const ROOTS = build(42, 7, true);
+  const ROOTS = build(42, 4, true); // wenige, klare Wurzelstufen
+  let rootSpread = 1;                 // wie weit die Wurzeln seitlich ausfächern (wächst mit der Zeit)
   const R = rng(3);
   const STARS = Array.from({ length: 40 }, () => [R(), R() * 0.5, R() * 1.2 + 0.4, R() * 6]);
   const DOTS = Array.from({ length: 120 }, () => [R() * 1000 - 300, GROUND + 10 + R() * (SH - GROUND - 40), R() < 0.15 ? 2.5 + R() * 3 : 0.8 + R() * 1.4, R() < 0.15]);
@@ -68,7 +69,9 @@ W.tree = (() => {
     const e = ease(f);
     const L = len * n.len * e;
     const wind = isRoot ? 0 : Math.sin(T * 1.25 + n.phase) * 0.012 * n.d + Math.sin(T * 0.6) * 0.008 * n.d;
-    const aa = a + wind + (isRoot ? 0 : droop * Math.sign(a) * n.d * 0.08);
+    let aa = a + wind + (isRoot ? 0 : droop * Math.sign(a) * n.d * 0.08);
+    // Wurzeln wachsen nie nach oben: höchstens schräg zur Seite, immer unter die Erde
+    if (isRoot) aa = clamp(aa, Math.PI * 0.62, Math.PI * 1.38);
     const x2 = x + Math.sin(aa) * L, y2 = y - Math.cos(aa) * L;
     const mx = (x + x2) / 2, my = (y + y2) / 2;
     const cx = mx + Math.cos(aa) * n.bend * L * 0.25, cy = my + Math.sin(aa) * n.bend * L * 0.25;
@@ -84,7 +87,7 @@ W.tree = (() => {
       box.minX = Math.min(box.minX, x2 - r * 1.3); box.maxX = Math.max(box.maxX, x2 + r * 1.3);
     }
     n.children.forEach(c => {
-      const ca = isRoot ? aa + c.ang - (aa - Math.PI) * 0.05 : aa + c.ang - aa * 0.14;
+      const ca = isRoot ? aa + c.ang * rootSpread - (aa - Math.PI) * 0.05 : aa + c.ang - aa * 0.14;
       // Die Hauptwurzeln setzen direkt am Stammfuß an (der Wurzelansatz selbst ist nur ein kurzer Knoten)
       branch(c, x2, y2, ca, isRoot && n.d === 0 ? len : len * n.len, isRoot && n.d === 0 ? w * 0.82 : w * 0.69, G, T, isRoot, tips, segs, droop, box);
     });
@@ -115,9 +118,11 @@ W.tree = (() => {
     }
     const size = clamp(G / 8, 0, 1), tw = G >= 1 ? trunkWidth(G) : 1.6;
     if (G >= 1) branch(TREE, 200, GROUND, 0, 52 * (0.62 + 0.38 * size), tw, G, T, false, tips, segs, droop, box);
-    const rs = 0.62 + 0.38 * clamp(RG / 7, 0, 1);
+    // Wurzeln: Form bleibt gleich übersichtlich, sie werden mit der Zeit nur tiefer (länger) und breiter
+    const rt = clamp((RG - 1) / 6.4, 0, 1);
+    rootSpread = 0.8 + 0.5 * rt;
     // Wurzeln sind eine Stufe „voraus“, damit schon der Keimling sichtbare Wurzeln hat
-    if (G >= 0.5) branch(ROOTS, 200, GROUND, Math.PI, 26 * rs, tw * 0.85, RG + 0.9, 0, true, [], rsegs, 0, box);
+    if (G >= 0.5) branch(ROOTS, 200, GROUND, Math.PI, 12 + 40 * rt, tw * 0.85, Math.min(5, RG + 1.2), 0, true, [], rsegs, 0, box);
     rsegs.forEach(s => { box.rootY = Math.max(box.rootY, s.y2); });
     segs.forEach(s => { box.treeY = Math.min(box.treeY, s.y2); });
     tips.forEach(t => { box.treeY = Math.min(box.treeY, t.y - t.r * 1.1); });
@@ -237,7 +242,9 @@ W.tree = (() => {
       ctx.lineTo(v.x + v.w + 10, SH + 40); ctx.lineTo(v.x - 10, SH + 40); ctx.fill();
       ctx.globalAlpha = 1;
 
-      // 6) Wurzeln
+      // 6) Wurzeln – nur unterhalb der Bodenlinie sichtbar
+      ctx.save();
+      ctx.beginPath(); ctx.rect(v.x - 10, GROUND, v.w + 20, SH - GROUND + 60); ctx.clip();
       ctx.lineCap = 'round';
       rsegs.forEach(s => {
         ctx.strokeStyle = C.root; ctx.globalAlpha = clamp(1 - s.d * 0.09, 0.45, 0.95);
@@ -245,6 +252,7 @@ W.tree = (() => {
         ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.quadraticCurveTo(s.cx, s.cy, s.x2, s.y2); ctx.stroke();
       });
       ctx.globalAlpha = 1;
+      ctx.restore();
       if (sprout) sproutRoot(sprout);
       if (rsegs.length) { // Wurzelansatz: Stamm geht nahtlos in die Wurzeln über
         ctx.fillStyle = C.root;
@@ -467,5 +475,5 @@ W.tree = (() => {
     return { update, animateGrowth, water, destroy };
   }
 
-  return { mount, sizes };
+  return { mount, sizes, geometry };
 })();
