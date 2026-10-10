@@ -147,7 +147,7 @@ W.ui = (() => {
     html += goalHTML() + questsHTML();
     if (st.startedVerses().length) html += `<button class="card side-shop" data-act="loop">${W.icon('loop')}<div><b>Dauerschleife</b><span>Gelerntes ohne Ende wiederholen.</span></div>${W.icon('chevron')}</button>`;
     if (s.freezes < st.MAX_FREEZES) html += `<button class="card side-shop" data-act="gems">${W.icon('cloud')}<div><b>Regenwolke</b><span>Schützt deine Serie an einem verpassten Tag. ${st.FREEZE_PRICE} Perlen.</span></div>${W.icon('chevron')}</button>`;
-    html += `<p class="side-foot">Bibeltext: Elberfelder 1905 · Tastatur: <kbd>1</kbd>–<kbd>4</kbd> wählen, <kbd>Enter</kbd> prüfen</p>`;
+    html += `<p class="side-foot">Bibeltext: Elberfelder 1905 · Tastatur: Buchstaben tippen, <kbd>Enter</kbd> weiter</p>`;
     side.innerHTML = html;
     const c = $('.side-tree canvas', side);
     if (c) mountTree(c);

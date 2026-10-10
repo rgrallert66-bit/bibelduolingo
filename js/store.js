@@ -225,7 +225,8 @@ W.store = (() => {
     () => ({ kind: 'review', goal: 1, text: () => 'Wiederhole einen gelernten Vers', gems: 15 })
   ];
   function quests() {
-    if (s.quests.date !== today()) {
+    // v: 2 = Aufgaben für die Anfangsbuchstaben-Methode (ältere Aufgaben werden ersetzt)
+    if (s.quests.date !== today() || s.quests.v !== 2) {
       const pool = QUEST_POOL.map(f => f()).filter(q => q.kind !== 'review' || startedVerses().length > 0);
       const pick = [];
       const seed = daysBetween('2024-01-01', today());
@@ -233,7 +234,7 @@ W.store = (() => {
       // immer eine EP-Aufgabe, dazu zwei weitere
       pick.push(pool.find(q => q.kind === 'xp'));
       order.forEach(({ q }) => { if (pick.length < 3 && !pick.includes(q)) pick.push(q); });
-      s.quests = { date: today(), items: pick.map(q => ({ kind: q.kind, goal: q.goal, label: q.text(q.goal), gems: q.gems, have: 0, done: false })) };
+      s.quests = { v: 2, date: today(), items: pick.map(q => ({ kind: q.kind, goal: q.goal, label: q.text(q.goal), gems: q.gems, have: 0, done: false })) };
       save();
     }
     return s.quests.items;
