@@ -161,9 +161,19 @@ W.store = (() => {
   };
 
   // ---------- Baum ----------
-  const growth = (days = totalDays()) => days <= 0 ? 0.55 : Math.min(8.4, 1 + 7.4 * (1 - Math.exp(-(days - 1) / 30)));
-  const rootGrowth = (days = totalDays(), streak = s.streak) =>
-    days <= 0 ? 0.4 : Math.min(7.6, 1 + 6.6 * (1 - Math.exp(-(days * 0.55 + streak * 0.9) / 26)));
+  // Wachstum: in den ersten 100 Lerntagen gleichmäßig, jeder Tag ein kleines sichtbares Stück; danach langsamer weiter
+  const GROW_DAYS = 100;
+  function growth(days = totalDays()) {
+    if (days <= 0) return 0.55;
+    if (days <= GROW_DAYS) return 1 + 7 * (days - 1) / (GROW_DAYS - 1);
+    return 8 + 0.4 * (1 - Math.exp(-(days - GROW_DAYS) / 150));
+  }
+  // Wurzeln: wachsen mit den Lerntagen und noch stärker mit der Serie (Tage in Folge)
+  function rootGrowth(days = totalDays(), streak = s.streak) {
+    if (days <= 0) return 0.4;
+    const x = (days * 0.6 + Math.min(streak, days) * 0.4) / GROW_DAYS;
+    return x <= 1 ? 1 + 6.4 * x : 7.4 + 0.2 * (1 - Math.exp(-(x - 1) * 2));
+  }
   const TREE_STAGES = [
     [0, 'Frisch gepflanzt'], [1, 'Ein neuer Anfang'], [3, 'Erste Blätter'], [7, 'Ein junger Trieb'], [14, 'Ein junger Baum'],
     [30, 'Ein kräftiger Baum'], [60, 'Fest verwurzelt'], [100, 'Ein mächtiger Baum'], [200, 'Wie eine Zeder im Libanon']
@@ -359,7 +369,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
+    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();

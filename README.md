@@ -14,7 +14,7 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
   Runde für Runde verschwinden mehr Wörter (25 % → 50 % → 75 %), zuletzt der ganze Vers. Diese letzte Runde wiederholt sich, bis sie ohne einen einzigen Fehler gelingt;
   nach Fehlern siehst du den Vers kurz noch einmal. Ein Vers hat 3 Lektionen: Lektion 1 beginnt bei 25 %, Lektion 2 bei 50 %, Lektion 3 direkt ganz aus dem Gedächtnis.
   Wiederholungen und Dauerschleife nutzen dieselbe Methode.
-- **Der Baum wächst von Tag zu Tag:** Die Krone wächst einmal pro Lerntag, nicht mit jeder weiteren Übung am selben Tag. Höhe und Wurzeltiefe werden realistisch angezeigt (Keimling: 10 cm hoch, 4 cm Wurzeln; nach einem Jahr: etwa 7,6 m hoch, 2,4 m Wurzeln).
+- **Der Baum wächst von Tag zu Tag:** In den ersten 100 Lerntagen wächst er an jedem Lerntag gleichmäßig ein kleines, sichtbares Stück (danach langsamer weiter), nicht mit jeder weiteren Übung am selben Tag. Höhe und Wurzeltiefe werden realistisch angezeigt (Keimling: 10 cm hoch, 4 cm Wurzeln; nach einem Jahr: etwa 7,6 m hoch, 2,4 m Wurzeln).
   Die Wurzeln reichen tiefer, je länger deine Serie ist. Jeder gemeisterte Vers hängt als Frucht am Baum.
   Wenn du heute noch nicht gelernt hast, hat der Baum Durst.
 - **Motivation:** tägliche Serie (blaue Flamme), Tagesziel, drei Tagesaufgaben, Perlen, Regenwolken als Serienschutz,

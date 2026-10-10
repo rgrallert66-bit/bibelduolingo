@@ -197,7 +197,8 @@ W.tree = (() => {
         ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(v.x + x * v.w, v.y + y * (GROUND - v.y), r * v.w / 300, 0, 7); ctx.fill();
       });
       ctx.globalAlpha = 1;
-      const u = v.w / 300; // Maßstab für Landschaftsdetails
+      // Landschaft in fester Größe: wächst der Baum, wird er im Vergleich zu Hügeln und Wolken sichtbar größer
+      const u = 1.1;
       ctx.fillStyle = S.sun;
       ctx.beginPath(); ctx.arc(v.x + v.w * 0.84, v.y + (GROUND - v.y) * 0.24, 17 * u, 0, 7); ctx.fill();
       if (S.night) { ctx.fillStyle = S.top; ctx.beginPath(); ctx.arc(v.x + v.w * 0.84 - 7 * u, v.y + (GROUND - v.y) * 0.24 - 4 * u, 14 * u, 0, 7); ctx.fill(); }
