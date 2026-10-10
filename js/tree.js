@@ -94,21 +94,22 @@ W.tree = (() => {
   // Geometrie von Krone und Wurzeln (ohne Zeichnen)
   const trunkWidth = G => 2.2 + 13 * clamp((G - 1) / 7, 0, 1);
   // Keimling (die Anfangspflanze): zwei Samenhälften, Stängel, zwei Blätter, eine feine Wurzel.
-  // Gezeichnet in Bildkoordinaten der Vorlage (Stängelfuß bei 650/775), skaliert mit sc.
-  const SPROUT_MAX = 1.5;
+  // Gezeichnet in Bildkoordinaten der Vorlage, skaliert mit sc. SOIL = Höhe der Bodenlinie in der Vorlage:
+  // die Samenhälften liegen darunter in der Erde, nur Stängel und Blätter schauen heraus.
+  const SPROUT_MAX = 1.5, SOIL = 680;
   function sproutGeom(G) {
     const p = clamp((G - 0.3) / 0.25, 0, 1);                 // Aufgehen des Samens
     const k = 0.85 + 0.15 * clamp((G - 0.55) / 0.45, 0, 1) + Math.max(0, G - 1) * 0.5;
-    return { p, e: ease(p), sc: 0.19 * k };
+    return { p, e: ease(p), sc: 0.08 * k };
   }
   function geometry(G, RG, T, droop) {
     const segs = [], tips = [], rsegs = [], box = { minY: GROUND - 40, minX: 200, maxX: 200, maxY: GROUND + 20, rootY: GROUND, treeY: GROUND };
     if (G < SPROUT_MAX) {
       const sp = sproutGeom(G);
-      box.treeY = GROUND - (775 - 375) * sp.sc * Math.max(0.25, sp.e);
+      box.treeY = GROUND - (SOIL - 375) * sp.sc * Math.max(0.25, sp.e);
       box.minY = box.treeY - 8;
       box.minX = 200 - 180 * sp.sc - 6; box.maxX = 200 + 190 * sp.sc + 6;
-      box.rootY = GROUND + (945 - 775) * sp.sc * Math.max(0.2, sp.p);
+      box.rootY = GROUND + (945 - SOIL) * sp.sc * Math.max(0.2, sp.p);
       box.maxY = box.rootY;
       return { segs, tips, rsegs, box, tw: 1.6, sprout: sp };
     }
@@ -313,7 +314,7 @@ W.tree = (() => {
     // ---- Keimling nach Vorlage ----
     function sproutSpace(sp) {
       ctx.save();
-      ctx.translate(200, GROUND); ctx.scale(sp.sc, sp.sc); ctx.translate(-650, -775);
+      ctx.translate(200, GROUND); ctx.scale(sp.sc, sp.sc); ctx.translate(-650, -SOIL);
     }
     // feine hellblaue Wurzel aus der rechten Samenhälfte
     function sproutRoot(sp) {
