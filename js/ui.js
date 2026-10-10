@@ -89,7 +89,7 @@ W.ui = (() => {
       const a = e.target.closest('[data-act]');
       if (!a) return false;
       W.sound.play('tap');
-      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow, pick: () => pickerModal(), loop: () => loopModal() })[a.dataset.act]();
+      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: () => practiceNow(), pick: () => pickerModal(), loop: () => loopModal() })[a.dataset.act]();
       return true;
     };
     $('#view').addEventListener('click', e => { if (!onAct(e)) closePop(); });
@@ -141,7 +141,7 @@ W.ui = (() => {
       html += `<section class="side-tree">
           <button class="side-tree-art" data-act="tree" aria-label="Zum Baum"><canvas></canvas><span class="tree-label">${esc(stage.name)}</span></button>
           ${vodHTML('side-vod')}
-          <button class="btn cta small" data-act="practice"><span>${!vod.v ? 'Vers wählen' : st.totalDays() === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
+          <button class="btn cta small" data-act="practice"><span>${ctaLabel()}</span>${W.icon('chevron')}</button>
         </section>`;
     }
     html += goalHTML() + questsHTML();
@@ -231,13 +231,14 @@ W.ui = (() => {
         const state = n.done ? 'done' : n.current ? 'current' : 'locked';
         let icon = 'trophy', ring = '', label = '';
         if (n.kind === 'chest') icon = n.done ? 'chestOpen' : 'chest';
+        if (n.kind === 'test') icon = n.done ? 'check' : n.locked ? 'lock' : 'target';
         if (n.kind === 'level') {
           icon = n.done ? 'check' : n.locked ? 'lock' : n.verse ? 'bookOpen' : 'search';
           label = `<span class="lvl-num">${n.level + 1}</span>`;
           if (n.current && n.verse) ring = `<svg class="node-ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" class="nr-bg"/><circle cx="50" cy="50" r="46" class="nr-fg" style="stroke-dashoffset:${289 * (1 - st.stageOf(n.verse.id) / st.STAGES)}"/></svg>`;
         }
-        const bubble = n.current ? (n.kind === 'chest' ? 'Öffnen' : n.kind === 'review' ? 'Start' : n.verse ? `Level ${n.level + 1}` : 'Vers wählen') : '';
-        const aria = n.kind === 'level' ? `Level ${n.level + 1}${n.verse ? ': ' + n.verse.ref : ''}` : n.kind === 'chest' ? 'Truhe' : 'Abschnitts-Wiederholung';
+        const bubble = n.current ? (n.kind === 'chest' ? 'Öffnen' : n.kind === 'review' ? 'Start' : n.kind === 'test' ? 'Test' : n.verse ? `Level ${n.level + 1}` : 'Vers wählen') : '';
+        const aria = n.kind === 'level' ? `Level ${n.level + 1}${n.verse ? ': ' + n.verse.ref : ''}` : n.kind === 'chest' ? 'Truhe' : n.kind === 'test' ? 'Zwischentest' : 'Abschnitts-Wiederholung';
         html += `<div class="node-wrap ${bubble ? 'has-bubble' : ''}" style="--x:${x}px" data-i="${k}">
             ${ring}
             <button class="node ${n.kind === 'level' ? 'verse' : n.kind} ${state}" data-k="${k}" aria-label="${esc(aria)}">${W.icon(icon)}${label}</button>
@@ -302,6 +303,11 @@ W.ui = (() => {
         inner = `<h4>Level ${L} · ${esc(v.ref)}</h4><p class="vtext">${esc(v.text)}</p><p class="pop-meta">${['Kennenlernen', 'Festigen', 'Meistern'][stage]} · Lektion ${stage + 1} von ${st.STAGES}</p>
           <button class="btn white big go">${stage ? 'Weiterlernen' : 'Jetzt lernen'} +10 EP</button><button class="btn ghost-white change-verse">Anderen Vers wählen</button>`;
       }
+    } else if (n.kind === 'test') {
+      const L = n.after + 1;
+      inner = n.locked ? `<h4>Zwischentest</h4><p>Nach Level ${L} prüfen wir ältere Verse, bevor es weitergeht.</p><button class="btn locked big" disabled>Noch gesperrt</button>`
+        : n.done ? `<h4>Zwischentest bestanden</h4><p>Willst du deine älteren Verse nochmal prüfen?</p><button class="btn white big go">Nochmal testen +15 EP</button>`
+        : `<h4>Zwischentest</h4><p>Bis zu 3 ältere Verse, ganz aus dem Gedächtnis. Bestehe ihn, dann geht es mit Level ${L + 1} weiter.</p><button class="btn white big go">Test starten +15 EP</button>`;
     } else if (n.kind === 'chest') {
       inner = n.locked ? `<h4>Schatztruhe</h4><p>Schaffe 3 Level dieses Abschnitts, dann öffnet sie sich.</p><button class="btn locked big" disabled>Noch verschlossen</button>`
         : n.done ? `<h4>Schatztruhe</h4><p>Schon geöffnet.</p>` : `<h4>Schatztruhe</h4><p>Darin warten Perlen auf dich!</p><button class="btn white big go">Öffnen</button>`;
@@ -333,6 +339,7 @@ W.ui = (() => {
       startLesson({ kind: 'unit', unitId: n.section.id, verses: n.verses.slice() });
       return;
     }
+    if (n.kind === 'test') return startTest(n.after);
     if (n.done) return startLesson({ kind: 'practice', verses: [n.verse] });
     if (!n.verse) return levelPicker({ start: true });
     startLesson({ kind: 'learn', verse: n.verse });
@@ -347,11 +354,15 @@ W.ui = (() => {
   function startLesson(cfg) {
     W.sound.init();
     const prevTab = tab;
+    // Etwa jede dritte Lektion prüft zwischendurch einen älteren Vers
+    if (cfg.kind === 'learn' && cfg.old === undefined && S().stats.lessons % 3 === 2) cfg.old = st.pickOld(1, [cfg.verse.id])[0] || null;
     cfg.onExit = r => {
       if (!r) return;
       show(prevTab, { scrollToCurrent: true, justDone: true });
-      // Level geschafft: gleich den Vers für das nächste Level wählen
-      if (r.levelUp && !st.focusVerse()) setTimeout(() => levelPicker({ start: false, done: r.levelUp }), 650);
+      // „Weiterlernen“: gleich der nächste Schritt
+      if (r.cont) { setTimeout(() => cfg.kind === 'loop' ? loopModal() : practiceNow(r.levelUp), 350); return; }
+      // Level geschafft: gleich den Vers für das nächste Level wählen (außer ein Test ist fällig)
+      if (r.levelUp && !st.focusVerse() && st.pendingTest() === null) setTimeout(() => levelPicker({ start: false, done: r.levelUp }), 650);
     };
     W.lesson.start(cfg);
   }
@@ -618,14 +629,38 @@ W.ui = (() => {
   }
 
   // „Jetzt üben“: Vers des aktuellen Levels lernen; ist noch keiner gewählt, erst wählen
-  function practiceNow() {
+  function practiceNow(justDone) {
+    const t = st.pendingTest();
+    if (t !== null) return startTest(t);
     const v = st.focusVerse();
     if (v) return startLesson({ kind: 'learn', verse: v });
-    levelPicker({ start: true });
+    levelPicker({ start: true, done: justDone || undefined });
+  }
+
+  function startTest(k) {
+    const verses = st.pickOld(3);
+    if (!verses.length) { st.get().tests[k] = st.today(); st.save(); return practiceNow(); }
+    startLesson({ kind: 'test', testAfter: k, verses });
+  }
+
+  function ctaLabel() {
+    if (st.pendingTest() !== null) return 'Test starten';
+    if (!st.focusVerse()) return 'Vers wählen';
+    return st.totalDays() === 0 ? 'Samen pflanzen' : 'Jetzt üben';
   }
 
   function vodHTML(cls) {
     const vod = verseOfDay(), L = st.currentLevel() + 1;
+    if (st.pendingTest() !== null) {
+      return `<section class="card vod choose ${cls || ''}">
+        <div class="vod-ic">${W.icon('target')}</div>
+        <div class="vod-body">
+          <div class="vod-label">Zwischentest vor Level ${L}</div>
+          <p class="vod-text">Kennst du deine älteren Verse noch?</p>
+          <div class="vod-ref">Bis zu 3 Verse aus den früheren Leveln, ganz aus dem Gedächtnis.</div>
+        </div>
+      </section>`;
+    }
     if (!vod.v) {
       const sug = st.suggestions(3);
       return `<section class="card vod choose ${cls || ''}">
@@ -660,7 +695,7 @@ W.ui = (() => {
         ${thirsty ? `<div class="thirst">${W.icon('flameOff')} Hat Durst</div>` : ''}
       </section>
       ${vodHTML()}
-      <button class="btn cta practice-now"><span>${!vod.v ? 'Vers wählen' : days === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
+      <button class="btn cta practice-now"><span>${ctaLabel()}</span>${W.icon('chevron')}</button>
       ${st.startedVerses().length ? `<button class="btn soft big wide loop-home" data-act="loop">${W.icon('loop')} Gelerntes in Dauerschleife wiederholen</button>` : ''}
       <p class="hero-msg">${heroMessage()}</p>
       ${goalHTML('m-only')}

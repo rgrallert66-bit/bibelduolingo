@@ -185,6 +185,11 @@ p { margin: 0; }
 .node.chest.locked { filter: grayscale(.8); opacity: .65; }
 .node.review { background: linear-gradient(140deg, var(--c), var(--cd)); }
 .node.review.locked { background: #d9e5f3; }
+.node.test { background: linear-gradient(140deg, #5b6cf0, #3e4fc9); box-shadow: 0 7px 0 #3241a8; }
+.node.test.done { background: var(--c); box-shadow: 0 7px 0 var(--cd); }
+.node.test.locked { background: #d9e5f3; color: #9fb4cf; box-shadow: 0 7px 0 #c2d3e7; }
+.announce-card { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.announce-card .ex-sub { width: 100%; margin: 4px 0 0; }
 .node.current { animation: nodeBob 2.4s ease-in-out infinite; }
 .node.unlock { animation: unlockPop .7s cubic-bezier(.3,1.6,.5,1), nodeBob 2.4s ease-in-out .7s infinite; }
 .node-ring { position: absolute; width: 96px; height: 96px; left: 0; top: -6px; transform: rotate(-90deg); }
@@ -388,7 +393,9 @@ p { margin: 0; }
 /* Abschluss-Bildschirme */
 .end-wrap { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: calc(env(safe-area-inset-top, 0px) + 24px) 22px 20px; text-align: center; position: relative; }
 .end-foot { padding: 14px 20px calc(env(safe-area-inset-bottom, 0px) + 22px); }
+.end-foot { display: flex; flex-direction: column; gap: 6px; }
 .end-foot .btn { width: 100%; }
+.end-foot .btn.cont .ic { width: 22px; height: 22px; }
 .end-hero .mascot { width: 150px; }
 .end-title { font-size: 30px; font-weight: 700; color: var(--label); }
 .end-sub { color: var(--ink-2); font-size: 16px; max-width: 34ch; }
@@ -689,7 +696,7 @@ kbd { font: inherit; font-size: .85em; font-weight: 600; background: var(--white
   .lesson-foot.is-ok .kbd-hint, .lesson-foot.is-bad .kbd-hint { display: none; }
   .lesson-foot:not(.is-ok):not(.is-bad) .foot-row { flex: 1; }
   .end-wrap, .ob-wrap { padding-left: max(24px, calc((100% - 600px) / 2)); padding-right: max(24px, calc((100% - 600px) / 2)); }
-  .end-foot { display: flex; justify-content: center; border-top: 2px solid var(--line); padding-top: 22px; }
+  .end-foot { display: flex; flex-direction: row-reverse; justify-content: center; gap: 12px; border-top: 2px solid var(--line); padding-top: 22px; }
   .end-foot .btn { width: min(100%, 380px); }
   .end-title { font-size: 36px; }
   .tree-stage { max-width: 560px; }

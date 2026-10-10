@@ -149,12 +149,12 @@ W.lesson = (() => {
 
     function finish() {
       const perfect = st.mistakes === 0;
-      const base = cfg.kind === 'unit' ? 15 : 10;
+      const base = cfg.kind === 'unit' || cfg.kind === 'test' ? 15 : 10;
       const xp = loop ? Math.min(60, st.rounds * 2 + st.perfect * 2) : base + (perfect ? 5 : 0) + Math.min(5, Math.floor(st.maxCombo / 25));
       const r = W.store.finishLesson({
         kind: loop ? 'practice' : cfg.kind, verseIds: cfg.verse ? [cfg.verse.id] : cfg.verses.map(v => v.id),
         verseScores: st.scores, correct: st.perfect, answered: st.rounds,
-        maxCombo: st.maxCombo, perfect, xp, unitId: cfg.unitId, firstUnitClear
+        maxCombo: st.maxCombo, perfect, xp, unitId: cfg.unitId, firstUnitClear, testAfter: cfg.testAfter
       });
       r.xp = xp; r.perfect = perfect; r.firstUnitClear = firstUnitClear;
       r.accuracy = st.hits + st.misses ? Math.round(st.hits / (st.hits + st.misses) * 100) : 100;
@@ -186,6 +186,7 @@ W.end = (() => {
       if (cleanup) { cleanup(); cleanup = null; }
       if (i >= steps.length) return onDone();
       screen.className = 'screen end';
+      finalR = i === steps.length - 1 ? r : null; // letzter Bildschirm: „Weiterlernen“ anbieten
       cleanup = steps[i++](screen, cfg, r, nextStep) || null;
     }
     nextStep();
@@ -193,13 +194,20 @@ W.end = (() => {
     r.achievements.forEach((a, k) => setTimeout(() => W.ui.achievementToast(a), 1400 + k * 2600));
   }
 
+  // Auf dem letzten Bildschirm: „Weiterlernen“ (gleich der nächste Schritt) oder zurück zur Übersicht
+  let finalR = null;
   function frame(screen, inner, btnLabel, next) {
-    screen.innerHTML = `<div class="end-wrap">${inner}</div><footer class="end-foot"><button class="btn primary big">${btnLabel || 'Weiter'}</button></footer>`;
+    const last = finalR;
+    screen.innerHTML = `<div class="end-wrap">${inner}</div><footer class="end-foot">${last
+      ? `<button class="btn primary big cont">Weiterlernen ${W.icon('chevron')}</button><button class="btn ghost big back">Zur Übersicht</button>`
+      : `<button class="btn primary big">${btnLabel || 'Weiter'}</button>`}</footer>`;
     const b = screen.querySelector('.end-foot .btn');
     let used = false;
-    const go = () => { if (used) return; used = true; W.sound.play('tap'); document.removeEventListener('keydown', onKey); next(); };
-    const onKey = e => { if (e.key === 'Enter' && !document.querySelector('.modal-back')) { e.preventDefault(); go(); } };
-    b.addEventListener('click', go);
+    const go = cont => { if (used) return; used = true; if (last && cont) last.cont = true; W.sound.play('tap'); document.removeEventListener('keydown', onKey); next(); };
+    const onKey = e => { if (e.key === 'Enter' && !document.querySelector('.modal-back')) { e.preventDefault(); go(true); } };
+    b.addEventListener('click', () => go(true));
+    const back = screen.querySelector('.end-foot .back');
+    if (back) back.addEventListener('click', () => go(false));
     setTimeout(() => document.addEventListener('keydown', onKey), 300);
     return () => document.removeEventListener('keydown', onKey);
   }
@@ -224,6 +232,7 @@ W.end = (() => {
       if (r.levelUp) title = `Level ${r.levelUp} geschafft!`;
       sub = st >= W.store.STAGES ? `<b>${esc(cfg.verse.ref)}</b> sitzt! Vers gemeistert.` : `${L ? `Level ${L} · ` : ''}${esc(cfg.verse.ref)} · Lektion ${st} von ${W.store.STAGES}`;
     } else if (cfg.kind === 'unit') { title = 'Einheit abgeschlossen!'; sub = 'Alle fünf Verse wiederholt.'; }
+    else if (cfg.kind === 'test') { title = 'Test bestanden!'; sub = `${cfg.verses.length === 1 ? '1 älterer Vers' : cfg.verses.length + ' ältere Verse'} aus dem Gedächtnis geprüft. Weiter geht’s mit Level ${W.store.currentLevel() + 1}.`; }
     else if (cfg.kind === 'loop') { title = 'Gut wiederholt!'; sub = `${r.answered} ${r.answered === 1 ? 'Runde' : 'Runden'} in der Dauerschleife, davon ${r.correct} fehlerfrei. Jede Wiederholung festigt die Verse.`; }
     else sub = `${cfg.verses.length === 1 ? '1 Vers' : cfg.verses.length + ' Verse'} wiederholt. Dein Gedächtnis wird stärker.`;
     const m = Math.floor(r.secs / 60), sec = String(r.secs % 60).padStart(2, '0');

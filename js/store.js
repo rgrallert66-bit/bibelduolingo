@@ -4,6 +4,7 @@ window.W = window.W || {};
 W.store = (() => {
   const KEY = 'wurzeln.v1';
   const STAGES = 3;               // Lektionen pro Vers
+  const TEST_EVERY = 3;           // Zwischentest nach jedem dritten Level
   const INTERVALS = [1, 1, 2, 4, 7, 14, 30]; // Tage bis zur nächsten Wiederholung je Stufe
   const FREEZE_PRICE = 200, MAX_FREEZES = 2, CHEST_GEMS = 25, UNIT_GEMS = 40;
 
@@ -33,6 +34,7 @@ W.store = (() => {
       stats: { lessons: 0, perfect: 0, correct: 0, answered: 0, bestCombo: 0, reviews: 0 },
       goalDate: null,
       levels: [],      // Level → gewählter Vers (Level 1 = Index 0)
+      tests: {},       // Zwischentest nach Level-Index → Datum bestanden
       custom: []       // eigene Verse { id, ref, text }
     };
   }
@@ -53,6 +55,13 @@ W.store = (() => {
       const done = ids.filter(id => st.progress[id] >= STAGES), open = ids.filter(id => st.progress[id] < STAGES);
       if (st.focus && W.VERSES[st.focus] && !open.includes(st.focus) && !done.includes(st.focus)) open.unshift(st.focus);
       st.levels = done.concat(open.slice(0, 1));
+    }
+    if (!st.tests) st.tests = {};
+    if (st.testsV !== 1) {
+      // Zwischentests neu: bei bestehenden Spielständen gelten frühere Tests als bestanden
+      let cur = 0; while (st.levels[cur] && (st.progress[st.levels[cur]] || 0) >= STAGES) cur++;
+      for (let k = TEST_EVERY - 1; k < cur; k += TEST_EVERY) st.tests[k] = st.tests[k] || 'alt';
+      st.testsV = 1;
     }
     return st;
   }
@@ -96,6 +105,22 @@ W.store = (() => {
   // Der Lernpfad besteht aus Leveln. Für jedes Level wählst du selbst einen Vers.
   // Ein Level ist geschafft, wenn sein Vers gemeistert ist (3 Lektionen). Dann geht es mit dem nächsten Level weiter.
   const SECTION_SIZE = 5;
+  // Zwischentest: nach jedem dritten Level werden ältere Verse geprüft, bevor es weitergeht
+  function pendingTest() {
+    const cur = currentLevel();
+    for (let k = TEST_EVERY - 1; k < cur; k += TEST_EVERY) if (!s.tests[k]) return k;
+    return null;
+  }
+  // Ältere Verse für Tests: zuerst schwache und lange nicht geübte
+  function pickOld(n, exclude = []) {
+    const cur = currentLevel();
+    const pool = s.levels.slice(0, cur).filter(id => id && W.VERSES[id] && !exclude.includes(id));
+    const score = id => {
+      const m = s.mem[id], since = m && m.last ? daysBetween(m.last, today()) : 30;
+      return (1 - strength(id)) + Math.min(1, since / 30) + Math.random() * 0.35;
+    };
+    return pool.map(id => ({ id, w: score(id) })).sort((a, b) => b.w - a.w).slice(0, n).map(x => W.VERSES[x.id]);
+  }
   const SECTION_NAMES = [
     ['Erste Schritte', 'Der Same wird gepflanzt'], ['Wurzeln schlagen', 'Das Wort fasst Fuß'], ['Wachsen', 'Jeden Tag ein Stück'],
     ['Frucht bringen', 'Was im Herzen wohnt'], ['Fest verwurzelt', 'Wie ein Baum am Wasser'], ['Licht sein', 'Das Licht der Welt'],
@@ -124,7 +149,7 @@ W.store = (() => {
     return { id: 's' + (k + 1), index: k, title: nm[0], subtitle: nm[1], color: u.color, dark: u.dark, from: k * SECTION_SIZE, to: k * SECTION_SIZE + SECTION_SIZE - 1 };
   }
   function pathNodes() {
-    const cur = currentLevel();
+    const cur = currentLevel(), pend = pendingTest();
     const sections = Math.max(2, Math.floor(cur / SECTION_SIZE) + 2);
     const nodes = [];
     for (let k = 0; k < sections; k++) {
@@ -132,7 +157,11 @@ W.store = (() => {
       const doneInSec = () => { let n = 0; for (let i = sec.from; i <= sec.to; i++) if (i < cur) n++; return n; };
       for (let i = sec.from; i <= sec.to; i++) {
         const v = levelVerse(i);
-        nodes.push({ kind: 'level', level: i, id: 'lvl-' + i, verse: v, unit: sec, section: sec, done: i < cur, current: i === cur, locked: i > cur });
+        const blocked = pend !== null && i > pend;
+        nodes.push({ kind: 'level', level: i, id: 'lvl-' + i, verse: v, unit: sec, section: sec, done: i < cur, current: i === cur && !blocked, locked: i > cur || blocked });
+        if ((i + 1) % TEST_EVERY === 0) {
+          nodes.push({ kind: 'test', id: 'test-' + i, after: i, unit: sec, section: sec, done: !!s.tests[i], locked: i >= cur, current: pend === i });
+        }
         if (i === sec.from + 2) {
           const id = 'chest-' + sec.id, n = doneInSec();
           nodes.push({ kind: 'chest', id, unit: sec, section: sec, done: !!s.chests[id], locked: n < 3, current: n >= 3 && !s.chests[id] });
@@ -312,9 +341,12 @@ W.store = (() => {
         newlyMastered.push(id); memUpdate(id, 1);
         if (s.levels[before.level] === id) levelUp = before.level + 1;
       }
+      // ältere Verse, die zwischendurch geprüft wurden
+      Object.entries(r.verseScores).forEach(([vid, sc]) => { if (vid !== id && sc.total) memUpdate(vid, sc.ok / sc.total); });
     } else {
       Object.entries(r.verseScores).forEach(([id, sc]) => memUpdate(id, sc.total ? sc.ok / sc.total : 1));
       if (r.kind === 'unit') s.unitsDone[r.unitId] = t;
+      if (r.kind === 'test') s.tests[r.testAfter] = t;
     }
     let gems = 0;
     if (r.kind === 'unit' && r.firstUnitClear) gems += UNIT_GEMS;
@@ -369,7 +401,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
+    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, pendingTest, pickOld, TEST_EVERY, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();

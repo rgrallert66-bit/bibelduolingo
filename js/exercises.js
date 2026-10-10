@@ -65,6 +65,23 @@ W.ex = (() => {
     };
   }
 
+  // ---------- Ankündigung: nur die Bibelstelle, der Text bleibt verborgen ----------
+  function announce(refs, title, text, btn) {
+    return {
+      type: 'announce', verse: null, graded: false,
+      mount(el, ctx) {
+        el.innerHTML = `
+          <div class="intro">
+            <div class="intro-head">${W.mascot('cheer', 'bob')}<div class="bubble"><b>${title}</b><br>${text}</div></div>
+            <div class="verse-card announce-card">${refs.map(v => `<span class="ref-chip">${esc(v.ref)}</span>`).join('')}
+              <p class="ex-sub">Der Vers bleibt verdeckt. Tippe gleich die Anfangsbuchstaben aus dem Gedächtnis.</p></div>
+          </div>`;
+        ctx.ready(true, btn || 'Los geht’s');
+      },
+      check: () => ({ ok: true })
+    };
+  }
+
   // ---------- Anfangsbuchstaben ----------
   // ratio: Anteil verdeckter Wörter (0.25 … 1), order: Reihenfolge des Verschwindens
   function letters(v, ratio, order, info = {}) {
@@ -148,20 +165,25 @@ W.ex = (() => {
   const tooMany = res => res.mistakes > Math.max(2, res.words * 0.3);
 
   // Neuen Vers lernen: Stufen 25 → 50 → 75 → 100 %, dann 100 % bis fehlerfrei
-  function learnPlan(v, stage) {
+  function learnPlan(v, stage, old) {
     const ratios = ROUNDS[Math.min(stage, 2)], order = hideOrder(v);
-    let step = 0, round = 0, fails = 0, done = false, pending = null, completed = 0;
+    let step = 0, round = 0, fails = 0, done = false, pending = null, completed = 0, extra = null;
     const label = () => `Runde ${round}`;
     const mk = r => { round++; return letters(v, r, order, { label: label(), mustBePerfect: r >= 1 }); };
     return {
       next(res, last) {
+        if (extra) { const n = extra.next(res, last); if (!n) done = true; return n; }
         if (pending) { const p = pending; pending = null; return p; }
         if (!last) return stage < 2 ? intro(v, stage === 0 ? 'new' : 'again') : mk(ratios[0]);
         if (last.type === 'intro' && round === 0) return mk(ratios[0]);
         if (last.type !== 'letters') return null;
         completed++;
         if (last.ratio < 1) { step = Math.min(step + 1, ratios.length - 1); return mk(ratios[step] > last.ratio ? ratios[step] : Math.min(1, last.ratio + 0.25)); }
-        if (res.ok) { done = true; return null; }
+        if (res.ok) {
+          // Zwischendurch: ein älterer Vers wird geprüft
+          if (old) { extra = reviewPlan([old], 'Älterer Vers'); return announce([old], 'Zwischendurch!', 'Kennst du diesen älteren Vers noch?', 'Prüf mich'); }
+          done = true; return null;
+        }
         fails++;
         pending = mk(tooMany(res) ? 0.75 : 1);
         return intro(v, 'peek', fails > 1 ? `Noch nicht ganz. Lies ihn langsam, Wort für Wort, und sprich ihn mit.` : undefined);
@@ -171,10 +193,10 @@ W.ex = (() => {
   }
 
   // Wiederholen: jeder Vers einmal komplett verdeckt; bei Fehlern kommt er nach einem Blick nochmal
-  function reviewPlan(verses) {
+  function reviewPlan(verses, prefix) {
     const queue = verses.map(v => ({ v, ratio: 1 })), total = verses.length, orders = {};
     let solved = 0, pending = null, cur = null;
-    const mk = item => { cur = item; orders[item.v.id] = orders[item.v.id] || hideOrder(item.v); return letters(item.v, item.ratio, orders[item.v.id], { label: `Vers ${Math.min(total, solved + 1)} von ${total}`, mustBePerfect: item.ratio >= 1 }); };
+    const mk = item => { cur = item; orders[item.v.id] = orders[item.v.id] || hideOrder(item.v); return letters(item.v, item.ratio, orders[item.v.id], { label: prefix ? (total > 1 ? `${prefix} · Vers ${Math.min(total, solved + 1)} von ${total}` : prefix) : `Vers ${Math.min(total, solved + 1)} von ${total}`, mustBePerfect: item.ratio >= 1 }); };
     return {
       next(res, last) {
         if (pending) { const p = pending; pending = null; return p; }
@@ -216,8 +238,19 @@ W.ex = (() => {
   }
 
   function plan(cfg) {
-    if (cfg.kind === 'learn') return learnPlan(cfg.verse, W.store.stageOf(cfg.verse.id));
+    if (cfg.kind === 'learn') return learnPlan(cfg.verse, W.store.stageOf(cfg.verse.id), cfg.old || null);
     if (cfg.kind === 'loop') return loopPlan(cfg.verses);
+    if (cfg.kind === 'test') {
+      const p = reviewPlan(cfg.verses, 'Test');
+      let started = false;
+      return {
+        next(res, last) {
+          if (!started) { started = true; return announce(cfg.verses, 'Zwischentest!', `Bevor es weitergeht: Kennst du ${cfg.verses.length === 1 ? 'diesen älteren Vers' : `diese ${cfg.verses.length} älteren Verse`} noch?`, 'Test starten'); }
+          return p.next(res, last && last.type === 'announce' ? null : last);
+        },
+        progress: p.progress
+      };
+    }
     return reviewPlan(cfg.verses);
   }
 
