@@ -422,7 +422,7 @@ W.ui = (() => {
   function renderVerses(view) {
     const started = st.startedVerses(), due = st.dueVerses();
     const total = st.allVerses().length;
-    let html = `<p class="muted sub-note">Wähle selbst, welchen Vers du lernen willst. ${started.length} von ${total} begonnen · ${st.masteredCount()} gemeistert</p>
+    let html = `<p class="muted sub-note">Alle ${total} Verse zum Stöbern, Üben und Wiederholen · ${started.length} begonnen · ${st.masteredCount()} gemeistert</p>
       <div class="lib-tools">
         <label class="search">${W.icon('search')}<input id="lib-q" type="search" placeholder="Vers oder Bibelstelle suchen" value="${esc(libQuery)}" autocomplete="off"></label>
         <div class="chips" role="tablist">${FILTERS.map(([k, l]) => `<button class="chip-f ${libFilter === k ? 'on' : ''}" data-f="${k}">${l}${k === 'due' && due.length ? ` ${due.length}` : ''}</button>`).join('')}</div>
@@ -743,7 +743,7 @@ W.ui = (() => {
       <div class="stat-grid">
         <div class="sg">${W.icon('flame')}<div><b>${s.streak}</b><span>Tage in Folge</span></div></div>
         <div class="sg">${W.icon('bolt')}<div><b>${s.xp}</b><span>EP gesamt</span></div></div>
-        <div class="sg">${W.icon('fruit', 'blue')}<div><b>${st.masteredCount()}</b><span>Verse gemeistert</span></div></div>
+        <div class="sg">${W.icon('fruit', 'blue')}<div><b>${st.currentLevel()}</b><span>Level geschafft</span></div></div>
         <div class="sg">${W.icon('crown', 'blue')}<div><b>${s.longestStreak}</b><span>Längste Serie</span></div></div>
       </div>
       <h3 class="sec-title">Diese Woche</h3>

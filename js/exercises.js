@@ -104,7 +104,7 @@ W.ex = (() => {
           </div>
           <h2 class="ex-title">${head}</h2>
           <p class="ex-sub">Tippe den <b>ersten Buchstaben</b> von jedem fehlenden Wort.${full && info.mustBePerfect ? ' Diese Runde muss fehlerfrei sein.' : ''}</p>
-          <div class="verse-card">${refChip(v)}<p class="scripture letters">${t.map(x => !hiddenSet.has(x.i)
+          <div class="verse-card">${refChip(v)}<p class="scripture letters"><span class="lw-cursor" aria-hidden="true"></span>${t.map(x => !hiddenSet.has(x.i)
             ? `<span class="lw shown">${esc(x.w)}</span>`
             : `<span class="lw hid" data-i="${x.i}">${esc(x.pre)}<span class="lw-core" style="width:${Math.max(1.4, x.core.length * 0.55)}em">${esc(x.core)}</span>${esc(x.post)}</span>`).join(' ')}</p></div>
           <p class="kbd-tip">Tipp: Du kannst einfach auf deiner Tastatur tippen.</p>
@@ -113,35 +113,69 @@ W.ex = (() => {
             <div class="kbd-row"><button class="key wide hint">${W.icon('bulb')} Wort zeigen</button></div></div>`;
         const spans = {}; el.querySelectorAll('.lw.hid').forEach(s => { spans[s.dataset.i] = s; });
         const hitsEl = el.querySelector('.rs-hits'), missEl = el.querySelector('.rs-miss');
+        const box = el.querySelector('.scripture.letters'), cursor = el.querySelector('.lw-cursor');
+        const restart = (node, cls) => { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); };
+        // Markierung gleitet weich zum nächsten fehlenden Wort
         const mark = () => {
           Object.values(spans).forEach(s => s.classList.remove('cur'));
           const cur = spans[hidden[pos]];
-          if (cur) { cur.classList.add('cur'); cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+          if (!cur) { cursor.classList.add('gone'); return; }
+          cur.classList.add('cur');
+          const core = cur.querySelector('.lw-core'), b = box.getBoundingClientRect(), r = core.getBoundingClientRect();
+          cursor.style.transform = `translate(${r.left - b.left - 4}px, ${r.top - b.top - 2}px)`;
+          cursor.style.width = (r.width + 8) + 'px'; cursor.style.height = (r.height + 6) + 'px';
+          if (cur.offsetTop + cur.offsetHeight > box.offsetHeight || r.bottom > window.innerHeight - 260) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        };
+        // kleine Funken am aufgedeckten Wort
+        const sparks = node => {
+          if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+          const b = box.getBoundingClientRect(), r = node.getBoundingClientRect();
+          for (let k = 0; k < 6; k++) {
+            const d = document.createElement('i');
+            d.className = 'spark';
+            d.style.left = (r.left - b.left + r.width / 2) + 'px'; d.style.top = (r.top - b.top + r.height / 2) + 'px';
+            const a = Math.PI * 2 * k / 6 + Math.random() * 0.6;
+            d.style.setProperty('--dx', Math.cos(a) * (18 + Math.random() * 14) + 'px');
+            d.style.setProperty('--dy', Math.sin(a) * (14 + Math.random() * 10) - 6 + 'px');
+            box.appendChild(d); setTimeout(() => d.remove(), 650);
+          }
         };
         const reveal = missed => {
           const s = spans[hidden[pos]]; s.classList.remove('hid', 'cur'); s.classList.add(missed ? 'missed' : 'got');
+          if (!missed) sparks(s);
           pos++; tries = 0; mark();
-          if (pos >= hidden.length) { el.querySelector('.kbd').classList.add('done'); ctx.done(); }
+          if (pos >= hidden.length) {
+            el.querySelector('.kbd').classList.add('done');
+            // zum Schluss läuft eine Welle über den Vers
+            el.querySelectorAll('.scripture.letters .lw').forEach((w, k) => { w.style.animationDelay = (k * 28) + 'ms'; restart(w, 'wave'); });
+            ctx.done();
+          }
         };
-        const miss = () => { mistakes++; missEl.textContent = mistakes; ctx.hit(false); };
+        const miss = () => { mistakes++; missEl.textContent = mistakes; restart(missEl.parentNode, 'bump'); ctx.hit(false); };
         const press = c => {
           if (pos >= hidden.length) return;
           const want = base(t[hidden[pos]].core[0]);
-          if (base(c) === want) { hits++; hitsEl.textContent = hits; W.sound.play('key'); ctx.hit(true); reveal(false); }
-          else {
+          if (base(c) === want) {
+            hits++; hitsEl.textContent = hits; restart(hitsEl.parentNode, 'bump');
+            const streak = ctx.hit(true);           // Treffer in Folge → nächster Ton der Tonleiter
+            W.sound.play('key', streak);
+            reveal(false);
+          } else {
             tries++; miss(); W.sound.play('miss'); W.sound.buzz(30);
-            const s = spans[hidden[pos]]; s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake');
+            const s = spans[hidden[pos]]; restart(s, 'shake'); restart(cursor, 'err');
             if (tries >= 2) reveal(true);
           }
         };
-        el.querySelectorAll('.key[data-c]').forEach(b => b.addEventListener('click', () => press(b.dataset.c)));
+        if (window.ResizeObserver) new ResizeObserver(() => mark()).observe(box);
+        el.querySelectorAll('.key[data-c]').forEach(b => b.addEventListener('click', () => { press(b.dataset.c); restart(b, 'hit'); }));
         el.querySelector('.hint').addEventListener('click', () => { if (pos < hidden.length) { W.sound.play('unpop'); miss(); reveal(true); } });
         ctx.typing(c => {
           if (!/^[a-zäöüß]$/i.test(c)) return;
           press(c);
           const k = el.querySelector(`.key[data-c="${c.toUpperCase()}"]`);
-          if (k) { k.classList.add('press'); setTimeout(() => k.classList.remove('press'), 120); }
+          if (k) { k.classList.add('press'); restart(k, 'hit'); setTimeout(() => k.classList.remove('press'), 120); }
         });
+        requestAnimationFrame(() => { cursor.classList.add('ready'); mark(); });
         mark();
         if (!hidden.length) ctx.done();
       },

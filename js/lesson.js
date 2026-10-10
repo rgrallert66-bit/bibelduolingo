@@ -68,6 +68,8 @@ W.lesson = (() => {
           } else { st.misses++; st.combo = 0; }
           comboPill.hidden = st.combo < 5;
           comboPill.querySelector('span').textContent = st.combo;
+          if (st.combo >= 5) { comboPill.classList.remove('bump'); void comboPill.offsetWidth; comboPill.classList.add('bump'); }
+          return st.combo;
         },
         done() { setTimeout(() => evaluate(), 380); }
       };
@@ -87,8 +89,8 @@ W.lesson = (() => {
       if (cur.ratio >= 1) { st.scores[v.id].total++; if (res.ok) st.scores[v.id].ok++; }
       if (res.ok) {
         st.perfect++;
-        W.sound.play(cur.ratio >= 1 ? 'combo' : 'correct'); W.sound.buzz(12);
-      } else { W.sound.play('wrong'); W.sound.buzz([40, 40, 40]); }
+        setTimeout(() => W.sound.play(cur.ratio >= 1 ? 'perfect' : 'roundOk'), 120); W.sound.buzz(12);
+      } else { setTimeout(() => W.sound.play('wrong'), 120); W.sound.buzz([40, 40, 40]); }
       setBar();
       foot.className = 'lesson-foot ' + (res.ok ? 'is-ok' : 'is-bad');
       fb.hidden = false;
@@ -100,7 +102,6 @@ W.lesson = (() => {
     }
 
     function comboToast(n) {
-      W.sound.play('combo');
       const t = document.createElement('div');
       t.className = 'combo-toast';
       t.innerHTML = `${W.icon('bolt')}<b>${n} Buchstaben in Folge!</b>`;
