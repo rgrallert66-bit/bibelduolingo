@@ -5,11 +5,23 @@ W.lesson = (() => {
   const PRAISE = ['Wunderbar!', 'Richtig!', 'Super!', 'Hervorragend!', 'Genau so!', 'Klasse!', 'Stark!', 'Perfekt!'];
   const esc = s => W.ex.esc(s);
 
-  // cfg: { kind:'learn'|'review'|'practice'|'unit', verse, unitId, verses, onExit }
+  // cfg: { kind:'learn'|'review'|'practice'|'unit'|'loop', verse, unitId, verses, onExit }
+  // 'loop' = Dauerschleife: immer neue Aufgaben aus den gewählten Versen, bis du aufhörst.
+  const LOOP_MIN = 5;
   function start(cfg) {
     const s = W.store.get();
+    const loop = cfg.kind === 'loop';
+    const misses = {};
+    // Schwächere und zuletzt falsch beantwortete Verse kommen öfter dran
+    function loopBatch() {
+      const pool = cfg.verses.map(v => ({ v, w: 1.4 - W.store.strength(v.id) + (misses[v.id] || 0) * 0.5 + Math.random() * 0.6 }));
+      pool.sort((a, b) => b.w - a.w);
+      const pick = pool.slice(0, Math.min(2, pool.length)).map(x => x.v);
+      return W.ex.reviewLesson(pick, pick.length === 1 ? 3 : 4);
+    }
     let list;
     if (cfg.kind === 'learn') list = W.ex.learnLesson(cfg.verse, W.store.stageOf(cfg.verse.id));
+    else if (loop) list = loopBatch();
     else list = W.ex.reviewLesson(cfg.verses, cfg.kind === 'unit' ? 10 : 8);
     const gradedTotal = list.filter(e => e.graded).length;
     const firstUnitClear = cfg.kind === 'unit' && !s.unitsDone[cfg.unitId];
@@ -24,6 +36,7 @@ W.lesson = (() => {
         <button class="icon-btn close" aria-label="Lektion beenden">${W.icon('close')}</button>
         <div class="bar"><div class="bar-fill"><span class="bar-shine"></span></div></div>
         <div class="combo-pill" hidden>${W.icon('bolt')}<span>0</span></div>
+        ${loop ? `<div class="loop-count" title="Richtige Antworten">${W.icon('loop')}<span>0</span></div><button class="btn soft loop-done">Fertig</button>` : ''}
       </header>
       <main class="ex-area"></main>
       <footer class="lesson-foot">
@@ -44,11 +57,18 @@ W.lesson = (() => {
     const barFill = el.querySelector('.bar-fill'), comboPill = el.querySelector('.combo-pill');
 
     function setBar() {
+      if (loop) {
+        const r = st.correct % 10;
+        barFill.style.width = Math.max(4, (r === 0 && st.correct ? 10 : r) * 10) + '%';
+        el.querySelector('.loop-count span').textContent = st.correct;
+        return;
+      }
       const p = gradedTotal ? st.done / gradedTotal : 1;
       barFill.style.width = Math.max(4, p * 100) + '%';
     }
 
     function mountNext() {
+      if (loop && st.queue.length < 2) st.queue.push(...loopBatch());
       if (!st.queue.length) return finish();
       cur = st.queue.shift();
       phase = 'answer'; keysFn = null; typingFn = null; readyFlag = false;
@@ -81,11 +101,14 @@ W.lesson = (() => {
         st.correct++; st.combo++; st.maxCombo = Math.max(st.maxCombo, st.combo);
         st.scores[v.id].ok++;
         W.sound.play('correct'); W.sound.buzz(12);
-        if ([3, 5, 8, 10, 15, 20].includes(st.combo)) setTimeout(() => comboToast(st.combo), 260);
+        if (loop && st.correct % 10 === 0) setTimeout(() => comboToast(st.correct, `${st.correct} richtig!`), 260);
+        else if ([3, 5, 8, 10, 15, 20].includes(st.combo)) setTimeout(() => comboToast(st.combo), 260);
       } else {
         st.combo = 0; st.mistakes++;
         W.sound.play('wrong'); W.sound.buzz([40, 40, 40]);
-        if (cur.type !== 'letters') st.queue.push(cur);
+        misses[v.id] = (misses[v.id] || 0) + 1;
+        if (loop && cur.type !== 'letters') st.queue.splice(Math.min(2, st.queue.length), 0, cur);
+        else if (cur.type !== 'letters') st.queue.push(cur);
       }
       if (res.ok || cur.type === 'letters') st.done++;
       setBar();
@@ -106,11 +129,11 @@ W.lesson = (() => {
       btn.focus({ preventScroll: true });
     }
 
-    function comboToast(n) {
+    function comboToast(n, text) {
       W.sound.play('combo');
       const t = document.createElement('div');
       t.className = 'combo-toast';
-      t.innerHTML = `${W.icon('bolt')}<b>${n} in Folge!</b>`;
+      t.innerHTML = `${W.icon('bolt')}<b>${text || n + ' in Folge!'}</b>`;
       el.appendChild(t);
       setTimeout(() => t.remove(), 1500);
     }
@@ -120,7 +143,17 @@ W.lesson = (() => {
       if (phase === 'answer') evaluate(); else mountNext();
     });
     skip.addEventListener('click', () => { W.sound.play('tap'); evaluate(true); });
+    function stopLoop() {
+      if (st.answered >= LOOP_MIN) { W.sound.play('tap'); finish(); return; }
+      W.ui.confirm({
+        mood: 'normal', title: 'Schon aufhören?',
+        text: `Ab ${LOOP_MIN} Aufgaben zählt die Runde für Serie und EP. Du hast ${st.answered} geschafft.`,
+        yes: 'Weiterüben', no: 'Beenden', onNo: () => close(null)
+      });
+    }
+    if (loop) el.querySelector('.loop-done').addEventListener('click', stopLoop);
     el.querySelector('.close').addEventListener('click', () => {
+      if (loop) return stopLoop();
       W.ui.confirm({
         mood: 'sad', title: 'Wirklich aufhören?',
         text: 'Wenn du jetzt gehst, verlierst du den Fortschritt dieser Lektion.',
@@ -149,15 +182,16 @@ W.lesson = (() => {
     function finish() {
       const perfect = st.mistakes === 0;
       const base = cfg.kind === 'unit' ? 15 : 10;
-      const xp = base + (perfect ? 5 : 0) + Math.floor(st.maxCombo / 5) * 2;
+      const xp = loop ? Math.min(60, st.correct) : base + (perfect ? 5 : 0) + Math.floor(st.maxCombo / 5) * 2;
       const r = W.store.finishLesson({
-        kind: cfg.kind, verseIds: cfg.verse ? [cfg.verse.id] : cfg.verses.map(v => v.id),
+        kind: loop ? 'practice' : cfg.kind, verseIds: cfg.verse ? [cfg.verse.id] : cfg.verses.map(v => v.id),
         verseScores: st.scores, correct: st.correct, answered: st.answered,
         maxCombo: st.maxCombo, perfect, xp, unitId: cfg.unitId, firstUnitClear
       });
       r.xp = xp; r.perfect = perfect; r.firstUnitClear = firstUnitClear;
       r.accuracy = st.answered ? Math.round(st.correct / st.answered * 100) : 100;
       r.secs = Math.round((Date.now() - st.t0) / 1000);
+      r.answered = st.answered; r.correct = st.correct;
       document.removeEventListener('keydown', onKey);
       W.end.run(el, cfg, r, () => close(r));
     }
@@ -220,6 +254,7 @@ W.end = (() => {
       const st = W.store.stageOf(cfg.verse.id);
       sub = st >= W.store.STAGES ? `<b>${esc(cfg.verse.ref)}</b> sitzt! Vers gemeistert.` : `${esc(cfg.verse.ref)} · Lektion ${st} von ${W.store.STAGES}`;
     } else if (cfg.kind === 'unit') { title = 'Einheit abgeschlossen!'; sub = 'Alle fünf Verse wiederholt.'; }
+    else if (cfg.kind === 'loop') { title = 'Gut wiederholt!'; sub = `${r.answered} Aufgaben in der Dauerschleife, davon ${r.correct} richtig. Jede Wiederholung festigt die Verse.`; }
     else sub = `${cfg.verses.length === 1 ? '1 Vers' : cfg.verses.length + ' Verse'} wiederholt. Dein Gedächtnis wird stärker.`;
     const m = Math.floor(r.secs / 60), sec = String(r.secs % 60).padStart(2, '0');
     const cleanup = frame(screen, `

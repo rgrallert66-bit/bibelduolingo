@@ -87,7 +87,7 @@ W.ui = (() => {
       const a = e.target.closest('[data-act]');
       if (!a) return false;
       W.sound.play('tap');
-      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow, pick: () => pickerModal() })[a.dataset.act]();
+      ({ streak: streakModal, gems: shopModal, goal: goalModal, tree: () => show('tree'), practice: practiceNow, pick: () => pickerModal(), loop: () => loopModal() })[a.dataset.act]();
       return true;
     };
     $('#view').addEventListener('click', e => { if (!onAct(e)) closePop(); });
@@ -143,6 +143,7 @@ W.ui = (() => {
         </section>`;
     }
     html += goalHTML() + questsHTML();
+    if (st.startedVerses().length) html += `<button class="card side-shop" data-act="loop">${W.icon('loop')}<div><b>Dauerschleife</b><span>Gelerntes ohne Ende wiederholen.</span></div>${W.icon('chevron')}</button>`;
     if (s.freezes < st.MAX_FREEZES) html += `<button class="card side-shop" data-act="gems">${W.icon('cloud')}<div><b>Regenwolke</b><span>Schützt deine Serie an einem verpassten Tag. ${st.FREEZE_PRICE} Perlen.</span></div>${W.icon('chevron')}</button>`;
     html += `<p class="side-foot">Bibeltext: Elberfelder 1905 · Tastatur: <kbd>1</kbd>–<kbd>4</kbd> wählen, <kbd>Enter</kbd> prüfen</p>`;
     side.innerHTML = html;
@@ -208,6 +209,8 @@ W.ui = (() => {
     }
     if (due.length) html += `
       <button class="due-card">${W.icon('repeat')}<div><b>${due.length === 1 ? '1 Vers will' : due.length + ' Verse wollen'} wiederholt werden</b><span>So bleiben sie dir für immer im Herzen.</span></div>${W.icon('chevron')}</button>`;
+    if (st.startedVerses().length) html += `
+      <button class="due-card loop-card" data-act="loop">${W.icon('loop')}<div><b>Dauerschleife</b><span>Gelerntes ohne Ende wiederholen, bis du aufhörst.</span></div>${W.icon('chevron')}</button>`;
     html += '<div class="path">';
     const pattern = [0, -1, -1.6, -1, 0, 1, 1.6, 1];
     let k = 0;
@@ -400,6 +403,7 @@ W.ui = (() => {
       </div>
       <div class="lib-actions">
         ${started.length ? `<button class="btn primary practice-all">${W.icon('repeat')} ${due.length ? `${due.length} fällige wiederholen` : 'Gelernte üben'}</button>` : ''}
+        ${started.length ? `<button class="btn soft loop-btn">${W.icon('loop')} Dauerschleife</button>` : ''}
         <button class="btn soft add-own">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button>
       </div>
       <div class="lib-list">${libraryHTML(libFilter, libQuery)}</div>`;
@@ -416,6 +420,8 @@ W.ui = (() => {
     const pa = $('.practice-all', view);
     if (pa) pa.addEventListener('click', () => { W.sound.play('tap'); startReview(due); });
     $('.add-own', view).addEventListener('click', () => { W.sound.play('tap'); addOwnModal(); });
+    const lb = $('.loop-btn', view);
+    if (lb) lb.addEventListener('click', () => { W.sound.play('tap'); loopModal(); });
   }
 
   function chooseVerse(v, start) {
@@ -435,6 +441,7 @@ W.ui = (() => {
           : `<button class="btn primary big learn">${stage ? 'Weiterlernen' : 'Diesen Vers lernen'}</button>
              ${isFocus ? '' : '<button class="btn soft big focus">Als meinen Lernvers merken</button>'}
              ${stage ? '<button class="btn ghost practice">Nur wiederholen</button>' : ''}`}
+        ${stage ? '<button class="btn soft loop-one">In Dauerschleife üben</button>' : ''}
         ${v.own ? '<button class="btn ghost danger remove">Eigenen Vers löschen</button>' : ''}
         <button class="btn ghost" data-close>Schließen</button>
       </div>`);
@@ -444,7 +451,43 @@ W.ui = (() => {
     on('.learn', () => chooseVerse(v, true));
     on('.focus', () => chooseVerse(v, false));
     on('.practice', () => startLesson({ kind: mastered ? 'practice' : 'review', verses: [v] }));
+    on('.loop-one', () => startLesson({ kind: 'loop', verses: [v] }));
     on('.remove', () => confirm({ mood: 'sad', title: 'Vers löschen?', text: `„${esc(v.ref)}“ und dein Fortschritt dazu werden entfernt.`, yes: 'Behalten', no: 'Löschen', onNo: () => { st.removeCustom(v.id); refresh(); } }));
+  }
+
+  // Dauerschleife: gelernte Verse ohne Ende wiederholen
+  function loopModal(preset) {
+    const started = st.startedVerses();
+    if (!started.length) {
+      const m = modal(`<div class="modal-mascot">${W.mascot('normal')}</div><h2>Noch nichts zum Wiederholen</h2><p>Lerne zuerst einen Vers. Danach kannst du ihn hier so oft wiederholen, wie du willst.</p>
+        <div class="modal-actions col"><button class="btn primary big pick">Vers auswählen</button><button class="btn ghost" data-close>Schließen</button></div>`);
+      $('.pick', m.el).addEventListener('click', () => { m.close(); pickerModal(); });
+      return;
+    }
+    const due = st.dueVerses(), mastered = started.filter(v => st.isMastered(v.id));
+    const SETS = [['all', 'Alle gelernten Verse', started], ['due', 'Nur fällige Verse', due], ['mastered', 'Nur gemeisterte Verse', mastered], ['pick', 'Selbst auswählen', null]];
+    let mode = preset ? 'pick' : 'all';
+    const chosen = new Set(preset ? preset.map(v => v.id) : started.map(v => v.id));
+    const m = modal(`
+      <div class="loop-head">${W.icon('loop')}</div>
+      <h2>Dauerschleife</h2>
+      <p>Wiederhole Gelerntes ohne Ende. Du hörst auf, wann du willst. Schwächere Verse kommen öfter dran.</p>
+      <div class="loop-sets">${SETS.map(([k, l, list]) => `<button class="goal-opt ${k === mode ? 'on' : ''}" data-k="${k}" ${list && !list.length ? 'disabled' : ''}><b>${l}</b><span>${list ? `${list.length} ${list.length === 1 ? 'Vers' : 'Verse'}` : ''}</span></button>`).join('')}</div>
+      <div class="loop-pick" hidden>${started.map(v => `<label class="pick-row"><input type="checkbox" value="${v.id}" ${chosen.has(v.id) ? 'checked' : ''}><span><b>${esc(v.ref)}</b><small>${esc(v.text)}</small></span></label>`).join('')}</div>
+      <div class="modal-actions col"><button class="btn primary big go">${W.icon('loop')} Dauerschleife starten</button><button class="btn ghost" data-close>Abbrechen</button></div>`, { cls: 'loop-modal' });
+    const pickBox = $('.loop-pick', m.el), go = $('.go', m.el);
+    const selection = () => mode === 'pick' ? started.filter(v => chosen.has(v.id)) : SETS.find(x => x[0] === mode)[2];
+    const sync = () => {
+      pickBox.hidden = mode !== 'pick';
+      m.el.querySelectorAll('.loop-sets .goal-opt').forEach(b => b.classList.toggle('on', b.dataset.k === mode));
+      const n = selection().length;
+      go.disabled = !n;
+      go.lastChild.textContent = n ? ` Starten · ${n} ${n === 1 ? 'Vers' : 'Verse'}` : ' Wähle mindestens einen Vers';
+    };
+    m.el.querySelectorAll('.loop-sets .goal-opt').forEach(b => b.addEventListener('click', () => { W.sound.play('pop'); mode = b.dataset.k; sync(); }));
+    pickBox.querySelectorAll('input').forEach(c => c.addEventListener('change', () => { c.checked ? chosen.add(c.value) : chosen.delete(c.value); W.sound.play('tap'); sync(); }));
+    go.addEventListener('click', () => { const vs = selection(); if (!vs.length) return; W.sound.play('tap'); m.close(); startLesson({ kind: 'loop', verses: vs }); });
+    sync();
   }
 
   // Schnellauswahl: Lernvers wechseln
@@ -558,6 +601,7 @@ W.ui = (() => {
         </div>
       </section>
       <button class="btn cta practice-now"><span>${days === 0 ? 'Samen pflanzen' : 'Jetzt üben'}</span>${W.icon('chevron')}</button>
+      ${st.startedVerses().length ? `<button class="btn soft big wide loop-home" data-act="loop">${W.icon('loop')} Gelerntes in Dauerschleife wiederholen</button>` : ''}
       <p class="hero-msg">${heroMessage()}</p>
       ${goalHTML('m-only')}
       ${questsHTML('m-only')}
@@ -775,5 +819,5 @@ W.ui = (() => {
     step1();
   }
 
-  return { shell, show, refresh, topbar, modal, confirm, toast, achievementToast, onboarding, startLesson, startNode, pickerModal, practiceNow, get tab() { return tab; } };
+  return { shell, show, refresh, topbar, modal, confirm, toast, achievementToast, onboarding, startLesson, startNode, pickerModal, practiceNow, loopModal, get tab() { return tab; } };
 })();

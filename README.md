@@ -17,6 +17,7 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
   Wenn du heute noch nicht gelernt hast, hat der Baum Durst.
 - **Motivation:** tägliche Serie (blaue Flamme), Tagesziel, drei Tagesaufgaben, Perlen, Regenwolken als Serienschutz,
   15 Erfolge, Kombo-Anzeige, Konfetti und Töne.
+- **Dauerschleife:** Gelernte Verse ohne Ende wiederholen, bis du auf „Fertig“ tippst. Wähle alle gelernten, nur fällige, nur gemeisterte oder einzelne Verse. Schwächere und zuletzt falsch beantwortete Verse kommen öfter dran. Ab 5 Aufgaben zählt die Runde für Serie und EP (1 EP pro richtiger Antwort, höchstens 60).
 - **Wiederholung:** Gelernte Verse werden nach einem Zeitplan (1, 2, 4, 7, 14, 30 Tage) wieder fällig, damit sie dauerhaft sitzen.
 - **Töne** werden direkt im Browser erzeugt (Web Audio). Neue Verse können vorgelesen werden (Sprachausgabe des Geräts).
 

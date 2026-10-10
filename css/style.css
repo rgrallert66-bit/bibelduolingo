@@ -542,6 +542,28 @@ p { margin: 0; }
   .verse-opts { grid-template-columns: 1fr 1fr; }
 }
 
+/* ---------- Dauerschleife ---------- */
+.loop-count { display: flex; align-items: center; gap: 4px; font-weight: 700; color: var(--primary); font-size: 17px; font-variant-numeric: tabular-nums; }
+.loop-count .ic { width: 26px; height: 26px; }
+.loop-done { padding: 8px 16px; border-radius: 14px; }
+.loop-card > .ic:first-child { color: var(--primary); }
+.loop-home { color: var(--primary); }
+.loop-head { display: grid; place-items: center; }
+.loop-head .ic { width: 64px; height: 64px; color: var(--primary); background: var(--soft); border-radius: 50%; padding: 12px; }
+.loop-modal { text-align: left; max-width: 520px; }
+.loop-modal h2, .loop-modal > p { text-align: center; }
+.loop-sets { display: flex; flex-direction: column; gap: 8px; }
+.loop-sets .goal-opt { padding: 14px 18px; }
+.loop-sets .goal-opt b { font-size: 16px; }
+.goal-opt:disabled { opacity: .45; cursor: default; }
+.loop-pick { display: flex; flex-direction: column; gap: 6px; max-height: 36vh; overflow-y: auto; padding: 2px; }
+.pick-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--white); border: 1.5px solid var(--line); cursor: pointer; }
+.pick-row input { width: 22px; height: 22px; accent-color: var(--primary); flex: none; margin: 0; }
+.pick-row span { display: flex; flex-direction: column; min-width: 0; }
+.pick-row b { color: var(--ink); font-size: 15px; }
+.pick-row small { color: var(--ink-2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.btn:disabled { opacity: .6; cursor: default; }
+
 /* ---------- PC-Ansicht ---------- */
 .brand, .side, .kbd-hint { display: none; }
 kbd { font: inherit; font-size: .85em; font-weight: 600; background: var(--white); border: 1.5px solid var(--line-2); border-bottom-width: 3px; border-radius: 7px; padding: 0 6px; color: var(--ink-2); }
