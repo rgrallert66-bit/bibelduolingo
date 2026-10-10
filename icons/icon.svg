@@ -1,14 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9e3fb"/><stop offset="1" stop-color="#e6f2fd"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe6fb"/><stop offset="1" stop-color="#eaf4fe"/></linearGradient>
+    <linearGradient id="stem" x1="0" y1="520" x2="0" y2="768" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#1d4690"/><stop offset="1" stop-color="#0f2c63"/></linearGradient>
+    <linearGradient id="ll" x1="480" y1="380" x2="650" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f95ff"/><stop offset="1" stop-color="#1f6fe8"/></linearGradient>
+    <linearGradient id="rl" x1="830" y1="374" x2="652" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2a78ee"/><stop offset="1" stop-color="#1a5fd2"/></linearGradient>
+    <radialGradient id="seed" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#5a7bbd"/><stop offset="1" stop-color="#2f4f8f"/></radialGradient>
+    <clipPath id="leafL"><path d="M652 532C634 456 594 398 481 377C494 420 538 462 598 490C624 503 638 516 646 540Z"/></clipPath>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#s)"/>
-  <circle cx="390" cy="120" r="38" fill="#f6fbff"/>
-  <rect x="0" y="330" width="512" height="182" fill="#c9def6"/>
-  <path d="M0 330h512" stroke="#2d66c2" stroke-width="12"/>
-  <path d="M256 330c0 30-14 52-40 74M256 330c2 34 18 54 40 74M256 345c-4 30-2 52 2 80" stroke="#2c5aa0" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <path d="M256 334c0-60 2-100 0-130" stroke="#1f4c93" stroke-width="12" fill="none" stroke-linecap="round"/>
-  <path d="M256 210c-66-4-104-44-108-100 64 0 104 34 108 100z" fill="#2a6fdb"/>
-  <path d="M256 210c66-4 104-44 108-100-64 0-104 34-108 100z" fill="#3b82e6"/>
-  <path d="M256 208 178 130M256 208l78-78" stroke="#173f80" stroke-width="6" stroke-linecap="round" opacity=".5"/>
+  <rect width="512" height="512" rx="112" fill="url(#sky)"/>
+  <rect x="0" y="400" width="512" height="112" fill="#cfe2f8"/>
+  <path d="M0 400h512" stroke="#2d66c2" stroke-width="10"/>
+  <g transform="translate(256 400) scale(0.86) translate(-656 -775)">
+    <path d="M736 796C754 826 754 852 744 876C734 900 738 924 748 944" stroke="#7fb3f3" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M637 768C638 660 639 600 640 556C640 540 643 528 646 520L654 520C657 528 660 540 660 556C661 600 662 660 663 768Z" fill="url(#stem)"/>
+    <path d="M652 532C634 456 594 398 481 377C494 420 538 462 598 490C624 503 638 516 646 540Z" fill="url(#ll)"/>
+    <path clip-path="url(#leafL)" d="M481 377C560 383 610 420 642 486C604 438 556 404 492 394Z" fill="#96c4ff" opacity=".75"/>
+    <path d="M648 532C678 444 742 386 831 374C816 420 772 456 712 480C682 494 662 510 654 540Z" fill="url(#rl)"/>
+    <ellipse cx="613" cy="760" rx="41" ry="31" transform="rotate(-35.5 613 760)" fill="url(#seed)"/>
+    <ellipse cx="706" cy="762" rx="49" ry="37" transform="rotate(33.2 706 762)" fill="url(#seed)"/>
+  </g>
 </svg>

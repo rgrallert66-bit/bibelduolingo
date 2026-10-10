@@ -867,10 +867,10 @@ W.ui = (() => {
           <button class="seed-btn" aria-label="Samen pflanzen"><canvas class="ob-tree small"></canvas></button>
           <p class="ob-sub small">Level 1: <b>${esc(first.ref)}</b></p>
         </div>`;
-      const ctl = W.tree.mount($('.ob-tree', el), { g: 0.4, rg: 0.3 });
+      const ctl = W.tree.mount($('.ob-tree', el), { g: 0.3, rg: 0.3 });
       $('.seed-btn', el).addEventListener('click', () => {
         W.sound.play('seed');
-        ctl.animateGrowth(0.4, 0.85, 0.3, 0.6, 1200).then(() => {
+        ctl.animateGrowth(0.3, 0.55, 0.3, 0.5, 1400).then(() => {
           ctl.destroy();
           st.set({ onboarded: true, name, dailyGoal: goal, created: st.today() });
           st.setLevelVerse(first.id);

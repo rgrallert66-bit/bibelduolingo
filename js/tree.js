@@ -93,8 +93,25 @@ W.tree = (() => {
 
   // Geometrie von Krone und Wurzeln (ohne Zeichnen)
   const trunkWidth = G => 2.2 + 13 * clamp((G - 1) / 7, 0, 1);
+  // Keimling (die Anfangspflanze): zwei Samenhälften, Stängel, zwei Blätter, eine feine Wurzel.
+  // Gezeichnet in Bildkoordinaten der Vorlage (Stängelfuß bei 650/775), skaliert mit sc.
+  const SPROUT_MAX = 1.5;
+  function sproutGeom(G) {
+    const p = clamp((G - 0.3) / 0.25, 0, 1);                 // Aufgehen des Samens
+    const k = 0.85 + 0.15 * clamp((G - 0.55) / 0.45, 0, 1) + Math.max(0, G - 1) * 0.5;
+    return { p, e: ease(p), sc: 0.19 * k };
+  }
   function geometry(G, RG, T, droop) {
     const segs = [], tips = [], rsegs = [], box = { minY: GROUND - 40, minX: 200, maxX: 200, maxY: GROUND + 20, rootY: GROUND, treeY: GROUND };
+    if (G < SPROUT_MAX) {
+      const sp = sproutGeom(G);
+      box.treeY = GROUND - (775 - 375) * sp.sc * Math.max(0.25, sp.e);
+      box.minY = box.treeY - 8;
+      box.minX = 200 - 180 * sp.sc - 6; box.maxX = 200 + 190 * sp.sc + 6;
+      box.rootY = GROUND + (945 - 775) * sp.sc * Math.max(0.2, sp.p);
+      box.maxY = box.rootY;
+      return { segs, tips, rsegs, box, tw: 1.6, sprout: sp };
+    }
     const size = clamp(G / 8, 0, 1), tw = G >= 1 ? trunkWidth(G) : 1.6;
     if (G >= 1) branch(TREE, 200, GROUND, 0, 52 * (0.62 + 0.38 * size), tw, G, T, false, tips, segs, droop, box);
     const rs = 0.62 + 0.38 * clamp(RG / 7, 0, 1);
@@ -154,7 +171,7 @@ W.tree = (() => {
       const T = reduce || o.still ? 0 : time;
 
       // 1) Struktur berechnen
-      const { segs, tips, rsegs, box, tw } = geometry(G, RG, T, o.thirsty ? 0.18 : 0);
+      const { segs, tips, rsegs, box, tw, sprout } = geometry(G, RG, T, o.thirsty ? 0.18 : 0);
       const size = clamp(G / 8, 0, 1);
 
       // 2) Kamera: Baum und Wurzeln passen immer hinein
@@ -226,6 +243,7 @@ W.tree = (() => {
         ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.quadraticCurveTo(s.cx, s.cy, s.x2, s.y2); ctx.stroke();
       });
       ctx.globalAlpha = 1;
+      if (sprout) sproutRoot(sprout);
       if (rsegs.length) { // Wurzelansatz: Stamm geht nahtlos in die Wurzeln über
         ctx.fillStyle = C.root;
         ctx.beginPath(); ctx.ellipse(200, GROUND + tw * 0.25, tw * 0.75, tw * 0.55, 0, 0, 7); ctx.fill();
@@ -235,8 +253,8 @@ W.tree = (() => {
       ctx.strokeStyle = C.line; ctx.lineWidth = 4.5 * Math.max(0.6, u * 0.9);
       ctx.beginPath(); ctx.moveTo(v.x - 10, GROUND); ctx.lineTo(v.x + v.w + 10, GROUND); ctx.stroke();
 
-      // 8) Same oder Baum
-      if (G < 1) seedling(G);
+      // 8) Keimling oder Baum
+      if (sprout) sproutPlant(sprout, T);
       else {
         const leafPal = o.thirsty ? C.leafDry : C.leaf, puffPal = o.thirsty ? C.puffDry : C.puff;
         if (G >= 2) tips.forEach(tp => puffs(tp, puffPal, clamp((G - 2) / 1.2, 0, 1)));
@@ -292,17 +310,77 @@ W.tree = (() => {
       ctx.globalAlpha = 1;
     }
 
-    function seedling(G) {
-      ctx.save(); ctx.translate(200, GROUND); ctx.scale(1.6, 1.6); ctx.translate(-200, -GROUND);
-      ctx.fillStyle = '#7fb0ea'; ctx.strokeStyle = C.vein; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.ellipse(200, GROUND + 9, 7, 5, -0.4, 0, 7); ctx.fill(); ctx.stroke();
-      if (G > 0.5) {
-        const h = 2 + (G - 0.5) * 34;
-        ctx.strokeStyle = C.trunk[0]; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(200, GROUND + 4); ctx.quadraticCurveTo(201, GROUND - h / 2, 200, GROUND - h); ctx.stroke();
-        leaf(200, GROUND - h, -0.9, 5 + h * 0.35, C.leaf[1]);
-        leaf(200, GROUND - h, 0.9, 5 + h * 0.35, C.leaf[0]);
-      }
+    // ---- Keimling nach Vorlage ----
+    function sproutSpace(sp) {
+      ctx.save();
+      ctx.translate(200, GROUND); ctx.scale(sp.sc, sp.sc); ctx.translate(-650, -775);
+    }
+    // feine hellblaue Wurzel aus der rechten Samenhälfte
+    function sproutRoot(sp) {
+      if (sp.p <= 0) return;
+      sproutSpace(sp);
+      ctx.translate(736, 798); ctx.scale(1, sp.p); ctx.translate(-736, -798);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = o.thirsty ? '#a9bdd4' : '#7fb3f3';
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(736, 796);
+      ctx.bezierCurveTo(754, 826, 754, 852, 744, 876);
+      ctx.bezierCurveTo(734, 900, 738, 924, 748, 944); ctx.stroke();
+      ctx.restore();
+    }
+    function sproutPlant(sp, T) {
+      const dry = o.thirsty;
+      sproutSpace(sp);
+      // Stängel und Blätter wachsen aus den Samenhälften heraus und wiegen sich leicht im Wind
+      ctx.save();
+      ctx.translate(650, 722); ctx.scale(sp.e, sp.e); ctx.rotate(Math.sin(T * 1.1) * 0.025); ctx.translate(-650, -722);
+      // Stängel
+      const sg = ctx.createLinearGradient(0, 520, 0, 722);
+      sg.addColorStop(0, dry ? '#4d6585' : '#1d4690'); sg.addColorStop(1, dry ? '#3d536f' : '#0f2c63');
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.moveTo(637, 768); ctx.bezierCurveTo(638, 660, 639, 600, 640, 556);
+      ctx.bezierCurveTo(640, 540, 643, 528, 646, 520);
+      ctx.lineTo(654, 520);
+      ctx.bezierCurveTo(657, 528, 660, 540, 660, 556);
+      ctx.bezierCurveTo(661, 600, 662, 660, 663, 768); ctx.closePath(); ctx.fill();
+      // Blätter (um den Blattansatz gedreht, damit sie sich bewegen)
+      ctx.save();
+      ctx.translate(650, 520); ctx.rotate(Math.sin(T * 1.6 + 1) * 0.04); ctx.translate(-650, -520);
+      // linkes Blatt
+      const lg = ctx.createLinearGradient(480, 380, 650, 512);
+      lg.addColorStop(0, dry ? '#93a8c3' : '#4f95ff'); lg.addColorStop(1, dry ? '#7088a8' : '#1f6fe8');
+      ctx.fillStyle = lg;
+      ctx.beginPath();
+      ctx.moveTo(652, 532); ctx.bezierCurveTo(634, 456, 594, 398, 481, 377);
+      ctx.bezierCurveTo(494, 420, 538, 462, 598, 490); ctx.bezierCurveTo(624, 503, 638, 516, 646, 540);
+      ctx.closePath(); ctx.fill();
+      // heller Glanzstreifen oben am linken Blatt (nur innerhalb des Blattes)
+      ctx.save(); ctx.clip();
+      ctx.fillStyle = dry ? 'rgba(220,230,242,.45)' : 'rgba(150,196,255,.75)';
+      ctx.beginPath();
+      ctx.moveTo(481, 377); ctx.bezierCurveTo(560, 383, 610, 420, 642, 486);
+      ctx.bezierCurveTo(604, 438, 556, 404, 492, 394); ctx.closePath(); ctx.fill();
+      ctx.restore();
+      // rechtes Blatt
+      const rg = ctx.createLinearGradient(830, 374, 652, 512);
+      rg.addColorStop(0, dry ? '#869cb9' : '#2a78ee'); rg.addColorStop(1, dry ? '#667f9f' : '#1a5fd2');
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.moveTo(648, 532); ctx.bezierCurveTo(678, 444, 742, 386, 831, 374);
+      ctx.bezierCurveTo(816, 420, 772, 456, 712, 480); ctx.bezierCurveTo(682, 494, 662, 510, 654, 540);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      ctx.restore();
+      // zwei Samenhälften am Boden
+      const seed = (cx, cy, rx, ry, rot) => {
+        const g = ctx.createRadialGradient(cx - rx * 0.35, cy - ry * 0.45, 2, cx, cy, rx * 1.1);
+        g.addColorStop(0, dry ? '#7b8fa9' : '#5a7bbd'); g.addColorStop(1, dry ? '#4f6380' : '#2f4f8f');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, rot, 0, 7); ctx.fill();
+      };
+      seed(613, 760, 41, 31, -0.62);
+      seed(706, 762, 49, 37, 0.58);
       ctx.restore();
     }
 

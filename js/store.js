@@ -165,7 +165,7 @@ W.store = (() => {
   const rootGrowth = (days = totalDays(), streak = s.streak) =>
     days <= 0 ? 0.4 : Math.min(7.6, 1 + 6.6 * (1 - Math.exp(-(days * 0.55 + streak * 0.9) / 26)));
   const TREE_STAGES = [
-    [0, 'Ein kleiner Same'], [1, 'Ein neuer Anfang'], [3, 'Erste Blätter'], [7, 'Ein junger Trieb'], [14, 'Ein junger Baum'],
+    [0, 'Frisch gepflanzt'], [1, 'Ein neuer Anfang'], [3, 'Erste Blätter'], [7, 'Ein junger Trieb'], [14, 'Ein junger Baum'],
     [30, 'Ein kräftiger Baum'], [60, 'Fest verwurzelt'], [100, 'Ein mächtiger Baum'], [200, 'Wie eine Zeder im Libanon']
   ];
   function treeStage(days = totalDays()) {
