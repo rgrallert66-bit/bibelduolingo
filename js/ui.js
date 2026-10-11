@@ -4,7 +4,7 @@ window.W = window.W || {};
 W.fx = {
   confetti(host, n = 46) {
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const cols = ['#1cb0f6', '#64b5ff', '#a6dcff', '#2563eb', '#ffffff', '#5b6cf0', '#ffd36b'];
+    const cols = ['#1cb0f6', '#64b5ff', '#a6dcff', '#2563eb', '#ffffff', '#5b6cf0', '#ffd36b'].map(W.theme.col);
     const box = document.createElement('div');
     box.className = 'confetti';
     for (let i = 0; i < n; i++) {
@@ -222,10 +222,10 @@ W.ui = (() => {
       const sn = nodes.filter(n => n.section === sec);
       const lv = sn.filter(n => n.kind === 'level'), done = lv.filter(n => n.done).length;
       const open = !sn[0].locked;
-      html += `<div class="unit-banner ${open ? '' : 'locked'}" style="--c:${sec.color};--cd:${sec.dark}">
+      html += `<div class="unit-banner ${open ? '' : 'locked'}" style="--c:${W.theme.col(sec.color)};--cd:${W.theme.col(sec.dark)}">
           <div><div class="eyebrow">Level ${sec.from + 1}–${sec.to + 1} · ${done} / ${lv.length} geschafft</div><h2>${esc(sec.title)}</h2><p>${esc(sec.subtitle)}</p></div>
           <div class="ub-icon">${W.icon(open ? 'tree' : 'lock')}</div></div>`;
-      html += `<div class="unit-nodes" style="--c:${sec.color};--cd:${sec.dark}">`;
+      html += `<div class="unit-nodes" style="--c:${W.theme.col(sec.color)};--cd:${W.theme.col(sec.dark)}">`;
       sn.forEach((n, i) => {
         const x = pattern[i % pattern.length] * 46;
         const state = n.done ? 'done' : n.current ? 'current' : 'locked';
@@ -291,7 +291,7 @@ W.ui = (() => {
     const pop = document.createElement('div');
     pop.className = 'node-pop ' + (n.locked ? 'locked' : '');
     pop.dataset.for = wrap.dataset.i;
-    pop.style.setProperty('--c', n.unit.color); pop.style.setProperty('--cd', n.unit.dark);
+    pop.style.setProperty('--c', W.theme.col(n.unit.color)); pop.style.setProperty('--cd', W.theme.col(n.unit.dark));
     let inner = '';
     if (n.kind === 'level') {
       const L = n.level + 1, v = n.verse;
@@ -392,7 +392,7 @@ W.ui = (() => {
         : lv >= 0 && status === 'mastered' ? `<span class="new-pill">Level ${lv + 1}</span>`
         : due.includes(v) ? '<span class="due-pill">fällig</span>'
         : status === 'new' ? '<span class="new-pill">Neu</span>' : '';
-      return `<button class="verse-row ${status}" data-id="${v.id}" style="--c:${u.color}">
+      return `<button class="verse-row ${status}" data-id="${v.id}" style="--c:${W.theme.col(u.color)}">
           <div class="vr-main"><b>${esc(v.ref)}</b><span>${esc(v.text)}</span></div>
           <div class="vr-side">${badge}
             ${status === 'new' ? '' : `<span class="stars" aria-label="${st.stageOf(v.id)} von 3 Lektionen">${[1, 2, 3].map(i => `<i class="${st.stageOf(v.id) >= i ? 'on' : ''}">${W.icon('star')}</i>`).join('')}</span>`}
@@ -404,7 +404,7 @@ W.ui = (() => {
   // Gruppiert nach Thema, gefiltert und durchsucht
   function libraryHTML(filter, query, opts = {}) {
     const due = st.dueVerses(), q = norm(query.trim());
-    const groups = W.UNITS.concat(W.OWN_UNIT.verses.length ? [W.OWN_UNIT] : []);
+    const groups = W.UNITS.concat([W.BIBLE_UNIT, W.OWN_UNIT].filter(u => u.verses.length));
     let html = '', count = 0;
     groups.forEach((u, ui) => {
       const vs = u.verses.filter(v => {
@@ -414,9 +414,59 @@ W.ui = (() => {
       });
       if (!vs.length) return;
       count += vs.length;
-      html += `<h3 class="unit-h" style="--c:${u.color}">${u.id === 'own' ? 'Eigene Verse' : `${esc(u.title)}`}</h3><div class="verse-list">${verseRows(vs, opts)}</div>`;
+      html += `<h3 class="unit-h" style="--c:${W.theme.col(u.color)}">${u.id === 'own' ? 'Eigene Verse' : `${esc(u.title)}`}</h3><div class="verse-list">${verseRows(vs, opts)}</div>`;
     });
-    return count ? html : `<div class="empty small"><p>Kein Vers gefunden. Du kannst ihn als eigenen Vers hinzufügen.</p></div>`;
+    return count ? html : opts.quiet ? '' : `<div class="empty small"><p>Kein Vers gefunden. Du kannst ihn als eigenen Vers hinzufügen.</p></div>`;
+  }
+
+  // ---------- Suche in der ganzen Bibel (js/bible.js) ----------
+  const MAX_WORDS = 90;
+  // Füllt das Feld getBox() mit Treffern zu query; onPick(result) beim Antippen. Gibt die Suchfunktion zurück.
+  function bibleSearch(getBox, onPick) {
+    let timer = 0, token = 0;
+    return query => {
+      clearTimeout(timer);
+      const q = query.trim(), my = ++token, box = getBox();
+      if (!box) return;
+      if (!q) { box.innerHTML = ''; return; }
+      box.innerHTML = `<div class="bible-wait">${W.bible.ready() ? 'Suche …' : 'Die ganze Bibel wird geladen …'}</div>`;
+      timer = setTimeout(() => W.bible.load().then(() => {
+        if (my !== token || !box.isConnected) return;
+        const shown = new Set(st.allVerses().filter(v => norm(v.ref + ' ' + v.text).includes(norm(q))).map(v => v.ref));
+        const list = W.bible.search(q).filter(r => !shown.has(r.ref));
+        if (!list.length) {
+          box.innerHTML = `<div class="empty small"><p>${shown.size ? 'Keine weiteren Verse gefunden.' : 'Kein Vers gefunden. Tipp: Gib eine Stelle wie „Joh 3,16“ oder „Psalm 23,1-3“ ein oder ein Wort aus dem Vers.'}</p></div>`;
+          return;
+        }
+        box.innerHTML = `<div class="verse-opts full">${list.map((r, i) => {
+          const words = r.text.split(/\s+/).length, long = words > MAX_WORDS;
+          return `<button class="verse-opt bible-opt ${long ? 'too-long' : ''}" data-b="${i}">
+            <b>${esc(r.ref)}${r.range ? ' <em>ganzer Abschnitt</em>' : ''}</b><span>${esc(r.text)}</span>
+            ${long ? `<small>Zu lang zum Auswendiglernen (${words} Wörter). Wähle einen kürzeren Abschnitt.</small>` : ''}</button>`;
+        }).join('')}</div>${list.length >= 60 ? '<p class="muted small-note">Die ersten 60 Treffer. Mit mehr Wörtern findest du genauer.</p>' : ''}`;
+        box.querySelectorAll('.bible-opt').forEach(b => b.addEventListener('click', () => {
+          if (b.classList.contains('too-long')) { W.sound.play('miss'); return; }
+          W.sound.play('tap'); onPick(list[+b.dataset.b]);
+        }));
+      }).catch(e => {
+        if (my !== token || !box.isConnected) return;
+        box.innerHTML = `<div class="empty small"><p>${esc(e.message || 'Die Bibel konnte nicht geladen werden.')} Prüfe deine Internetverbindung.</p></div>`;
+      }), W.bible.ready() ? 180 : 0);
+    };
+  }
+
+  // Vorschau eines Bibelverses aus der Suche (wird erst beim Lernen gespeichert)
+  function bibleModal(r) {
+    const known = W.VERSE_LIST.find(v => v.ref === r.ref) || W.VERSES[r.id];
+    if (known) return verseModal(known);
+    const m = modal(`
+      <div class="vm-top"><span class="ref-chip">${esc(r.ref)}</span>${W.sound.canSpeak() ? `<button class="icon-btn speak" aria-label="Vorlesen">${W.icon('speaker')}</button>` : ''}</div>
+      <p class="scripture big">${esc(r.text)}</p>
+      <div class="vm-meta"><span>Elberfelder 1905</span><span>Noch nicht gelernt</span></div>
+      <div class="modal-actions col"><button class="btn primary big learn">In Level ${st.currentLevel() + 1} lernen</button><button class="btn ghost" data-close>Schließen</button></div>`);
+    const sp = $('.speak', m.el);
+    if (sp) sp.addEventListener('click', () => W.sound.speak(r.text));
+    $('.learn', m.el).addEventListener('click', () => { W.sound.play('tap'); m.close(); chooseVerse(W.bible.toVerse(r), true); });
   }
 
   function renderVerses(view) {
@@ -424,7 +474,7 @@ W.ui = (() => {
     const total = st.allVerses().length;
     let html = `<p class="muted sub-note">Alle ${total} Verse zum Stöbern, Üben und Wiederholen · ${started.length} begonnen · ${st.masteredCount()} gemeistert</p>
       <div class="lib-tools">
-        <label class="search">${W.icon('search')}<input id="lib-q" type="search" placeholder="Vers oder Bibelstelle suchen" value="${esc(libQuery)}" autocomplete="off"></label>
+        <label class="search">${W.icon('search')}<input id="lib-q" type="search" placeholder="Ganze Bibel durchsuchen …" value="${esc(libQuery)}" autocomplete="off"></label>
         <div class="chips" role="tablist">${FILTERS.map(([k, l]) => `<button class="chip-f ${libFilter === k ? 'on' : ''}" data-f="${k}">${l}${k === 'due' && due.length ? ` ${due.length}` : ''}</button>`).join('')}</div>
       </div>
       <div class="lib-actions">
@@ -432,12 +482,16 @@ W.ui = (() => {
         ${started.length ? `<button class="btn soft loop-btn">${W.icon('loop')} Dauerschleife</button>` : ''}
         <button class="btn soft add-own">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button>
       </div>
-      <div class="lib-list">${libraryHTML(libFilter, libQuery)}</div>`;
+      <div class="lib-list">${libraryHTML(libFilter, libQuery, { quiet: !!libQuery.trim() })}</div>
+      <div class="lib-bible" ${libQuery.trim() ? '' : 'hidden'}><div class="lp-sec">In der ganzen Bibel</div><div class="bible-res"></div></div>`;
     view.innerHTML = html;
-    const list = $('.lib-list', view);
+    const list = $('.lib-list', view), bibleBox = $('.lib-bible', view);
+    const searchBible = bibleSearch(() => $('.bible-res', view), bibleModal);
     const wireRows = () => list.querySelectorAll('.verse-row').forEach(b => b.addEventListener('click', () => { W.sound.play('tap'); verseModal(W.VERSES[b.dataset.id]); }));
     wireRows();
-    $('#lib-q', view).addEventListener('input', e => { libQuery = e.target.value; list.innerHTML = libraryHTML(libFilter, libQuery); wireRows(); });
+    const updBible = () => { bibleBox.hidden = !libQuery.trim(); searchBible(libQuery); };
+    updBible();
+    $('#lib-q', view).addEventListener('input', e => { libQuery = e.target.value; list.innerHTML = libraryHTML(libFilter, libQuery, { quiet: !!libQuery.trim() }); wireRows(); updBible(); });
     view.querySelectorAll('.chip-f').forEach(b => b.addEventListener('click', () => {
       W.sound.play('tap'); libFilter = b.dataset.f;
       view.querySelectorAll('.chip-f').forEach(x => x.classList.toggle('on', x === b));
@@ -534,7 +588,7 @@ W.ui = (() => {
     const title = opts.done ? `Level ${opts.done} geschafft!` : `Level ${L}`;
     const m = modal(`
       <div class="lp-head"><span class="lp-level">${title}</span><h2>Welchen Vers willst du ${opts.done ? `in Level ${L}` : 'jetzt'} lernen?</h2></div>
-      <label class="search">${W.icon('search')}<input id="pick-q" type="search" placeholder="Suchen: Wort oder Bibelstelle, z. B. „Hirte“" autocomplete="off"></label>
+      <label class="search">${W.icon('search')}<input id="pick-q" type="search" placeholder="Ganze Bibel durchsuchen …" autocomplete="off"></label>
       <div class="lp-body"></div>
       <div class="modal-actions col"><button class="btn soft add-own">${W.icon('bookOpen')} Eigenen Vers hinzufügen</button><button class="btn ghost" data-close>${opts.done ? 'Später wählen' : 'Schließen'}</button></div>`, { cls: 'picker' });
     const body = $('.lp-body', m.el);
@@ -543,13 +597,22 @@ W.ui = (() => {
       if (opts.onPicked) { if (st.setLevelVerse(v.id)) { W.sound.play('pop'); opts.onPicked(v); } return; }
       chooseVerse(v, !!opts.start);
     };
+    // Vers antippen: schon in einem früheren Level gelernte Verse nicht noch einmal vergeben
+    const tryPick = v => {
+      const lv = st.levelOfVerse(v.id);
+      if (lv >= 0 && lv < st.currentLevel()) { W.sound.play('miss'); toast(`${W.icon('check')}<div><small>Schon gelernt</small><b>${esc(v.ref)} ist Level ${lv + 1}</b></div>`); return; }
+      W.sound.play('tap'); pick(v);
+    };
+    const searchBible = bibleSearch(() => $('.bible-res', body), r => tryPick(W.bible.toVerse(r)));
     const cards = list => list.map(v => `<button class="verse-opt" data-id="${v.id}"><b>${esc(v.ref)}</b><span>${esc(v.text)}</span></button>`).join('');
     const draw = () => {
       let html = '';
       if (q.trim()) {
-        html = `<div class="lp-sec">Suchergebnisse</div><div class="lib-list">${libraryHTML('all', q, { pick: true })}</div>`;
+        const local = libraryHTML('all', q, { pick: true, quiet: true });
+        html = `${local ? `<div class="lp-sec">Aus den Vorschlägen</div><div class="lib-list">${local}</div>` : ''}
+          <div class="lp-sec">In der ganzen Bibel</div><div class="bible-res"></div>`;
       } else if (theme) {
-        const u = W.UNITS.concat([W.OWN_UNIT]).find(x => x.id === theme);
+        const u = W.UNITS.concat([W.BIBLE_UNIT, W.OWN_UNIT]).find(x => x.id === theme);
         html = `<button class="lp-back">${W.icon('chevron')} Zurück zu den Vorschlägen</button><div class="lp-sec">${esc(u.title)}</div><div class="verse-list">${verseRows(u.verses, { pick: true })}</div>`;
       } else {
         const sug = st.suggestions(6, offset);
@@ -557,14 +620,11 @@ W.ui = (() => {
           <div class="verse-opts">${cards(sug.length ? sug : st.suggestions(6, 0))}</div>
           <button class="btn ghost more-sug">${W.icon('repeat')} Andere Vorschläge</button>
           <div class="lp-sec">Nach Thema stöbern</div>
-          <div class="theme-grid">${W.UNITS.concat(W.OWN_UNIT.verses.length ? [W.OWN_UNIT] : []).map(u => `<button class="theme-btn" data-t="${u.id}" style="--c:${u.color}"><b>${esc(u.title)}</b><span>${u.verses.length} Verse</span></button>`).join('')}</div>`;
+          <div class="theme-grid">${W.UNITS.concat([W.BIBLE_UNIT, W.OWN_UNIT].filter(u => u.verses.length)).map(u => `<button class="theme-btn" data-t="${u.id}" style="--c:${W.theme.col(u.color)}"><b>${esc(u.title)}</b><span>${u.verses.length} Verse</span></button>`).join('')}</div>`;
       }
       body.innerHTML = html;
-      body.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => {
-        const v = W.VERSES[b.dataset.id], lv = st.levelOfVerse(v.id);
-        if (lv >= 0 && lv < st.currentLevel()) { W.sound.play('miss'); toast(`${W.icon('check')}<div><small>Schon gelernt</small><b>${esc(v.ref)} ist Level ${lv + 1}</b></div>`); return; }
-        W.sound.play('tap'); pick(v);
-      }));
+      searchBible(q);
+      body.querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => tryPick(W.VERSES[b.dataset.id])));
       const more = $('.more-sug', body);
       if (more) more.addEventListener('click', () => { W.sound.play('tap'); offset = st.suggestions(6, offset + 6).length ? offset + 6 : 0; draw(); });
       body.querySelectorAll('.theme-btn').forEach(b => b.addEventListener('click', () => { W.sound.play('tap'); theme = b.dataset.t; draw(); body.scrollTop = 0; }));
@@ -758,6 +818,7 @@ W.ui = (() => {
       </div>
       <h3 class="sec-title">Einstellungen</h3>
       <div class="settings">
+        <div class="set-row col"><span>Lieblingsfarbe</span><div class="color-row" role="radiogroup" aria-label="Lieblingsfarbe">${W.theme.LIST.map(t => `<button class="color-sw ${W.theme.id === t.id ? 'on' : ''}" data-color="${t.id}" role="radio" aria-checked="${W.theme.id === t.id}" style="--sw:${t.sw}"><i>${W.icon('check')}</i>${t.name}</button>`).join('')}</div></div>
         <label class="set-row"><span>Töne</span><input type="checkbox" id="set-sound" class="switch" ${s.sound ? 'checked' : ''}></label>
         <label class="set-row"><span>Neue Verse automatisch vorlesen</span><input type="checkbox" id="set-tts" class="switch" ${s.tts ? 'checked' : ''}></label>
         <div class="set-row col"><span>Tagesziel</span><div class="seg">${[10, 20, 30, 50].map(g => `<button class="${s.dailyGoal === g ? 'on' : ''}" data-g="${g}">${g} EP</button>`).join('')}</div></div>
@@ -766,6 +827,11 @@ W.ui = (() => {
       </div>
       <p class="fine">Bibeltext: Elberfelder Bibel 1905 (gemeinfrei); „Jehova“ als „HERR“ wiedergegeben, Rechtschreibung angepasst. Dein Fortschritt wird nur auf diesem Gerät gespeichert.</p>`;
     $('.buy', view).addEventListener('click', buyFreeze);
+    view.querySelectorAll('.color-sw').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.color === W.theme.id) return;
+      st.set({ color: b.dataset.color }); W.theme.apply(b.dataset.color);
+      W.sound.play('pop'); refresh(); topbar();
+    }));
     $('#set-sound', view).addEventListener('change', e => { st.set({ sound: e.target.checked }); W.sound.play('pop'); });
     $('#set-tts', view).addEventListener('change', e => { st.set({ tts: e.target.checked }); W.sound.play('tap'); });
     view.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => { st.set({ dailyGoal: +b.dataset.g }); W.sound.play('pop'); refresh(); }));

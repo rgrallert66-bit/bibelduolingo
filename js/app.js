@@ -4,8 +4,9 @@ window.W = window.W || {};
 W.app = (() => {
   function boot() {
     document.getElementById('overlay-root').innerHTML = '';
-    W.ui.shell();
     const s = W.store.get();
+    W.theme.apply(s.color);
+    W.ui.shell();
     if (!s.onboarded) {
       W.ui.show('tree');
       W.ui.onboarding(() => {

@@ -35,11 +35,13 @@ W.store = (() => {
       goalDate: null,
       levels: [],      // Level → gewählter Vers (Level 1 = Index 0)
       tests: {},       // Zwischentest nach Level-Index → Datum bestanden
-      custom: []       // eigene Verse { id, ref, text }
+      custom: [],      // eigene Verse { id, ref, text } und Verse aus der ganzen Bibel { …, bible: true }
+      color: 'blau'    // Lieblingsfarbe (js/theme.js)
     };
   }
 
   W.OWN_UNIT = { id: 'own', title: 'Eigene Verse', subtitle: 'Von dir hinzugefügt', color: '#3d7be0', dark: '#2a62bf', verses: [] };
+  W.BIBLE_UNIT = { id: 'bible', title: 'Aus der ganzen Bibel', subtitle: 'Von dir gesucht', color: '#2f6bdb', dark: '#2152ad', verses: [] };
   let s = load();
   function load() {
     let st = defaults();
@@ -66,14 +68,26 @@ W.store = (() => {
     return st;
   }
 
-  // Eigene Verse als eigene „Einheit“ einhängen
+  // Eigene Verse und gesuchte Bibelverse als eigene „Einheiten“ einhängen
   function registerCustom(list) {
-    W.OWN_UNIT.verses.forEach(v => { delete W.VERSES[v.id]; });
-    W.OWN_UNIT.verses = (list || []).map((c, i) => Object.assign({}, c, { unit: 'own', unitIndex: W.UNITS.length, index: i, own: true }));
-    W.OWN_UNIT.verses.forEach(v => { W.VERSES[v.id] = v; });
+    [W.OWN_UNIT, W.BIBLE_UNIT].forEach(u => { u.verses.forEach(v => { delete W.VERSES[v.id]; }); u.verses = []; });
+    (list || []).forEach(c => {
+      const u = c.bible ? W.BIBLE_UNIT : W.OWN_UNIT;
+      u.verses.push(Object.assign({}, c, { unit: u.id, unitIndex: W.UNITS.length, index: u.verses.length, own: !c.bible }));
+    });
+    W.OWN_UNIT.verses.concat(W.BIBLE_UNIT.verses).forEach(v => { W.VERSES[v.id] = v; });
   }
-  const allVerses = () => W.VERSE_LIST.concat(W.OWN_UNIT.verses);
-  const unitOf = v => v.own ? W.OWN_UNIT : W.UNITS[v.unitIndex];
+  const allVerses = () => W.VERSE_LIST.concat(W.BIBLE_UNIT.verses, W.OWN_UNIT.verses);
+  const unitOf = v => v.unit === 'bible' ? W.BIBLE_UNIT : v.own ? W.OWN_UNIT : W.UNITS[v.unitIndex];
+
+  // Vers aus der Bibelsuche (js/bible.js) übernehmen
+  function addBibleVerse({ id, ref, text }) {
+    if (!W.VERSES[id]) {
+      s.custom.push({ id, ref, text, bible: true });
+      registerCustom(s.custom); save();
+    }
+    return W.VERSES[id];
+  }
 
   function addCustom(ref, text) {
     const id = 'own-' + Date.now().toString(36);
@@ -401,7 +415,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, pendingTest, pickOld, TEST_EVERY, allVerses, unitOf, addCustom, removeCustom, growth, rootGrowth, treeStage,
+    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, pendingTest, pickOld, TEST_EVERY, allVerses, unitOf, addCustom, addBibleVerse, removeCustom, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();

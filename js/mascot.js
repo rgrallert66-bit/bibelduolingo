@@ -22,5 +22,5 @@ W.mascot = (mood = 'happy', cls = '') => {
     <ellipse cx="88" cy="52" rx="4.2" ry="2.6" fill="#ffb7cc" opacity=".75"/>
     <path d="M97 45 L110 50 L97 55 Z" fill="#ffaf45"/>
     <path d="M106 50 q8 -10 14 -6 q-4 8 -14 6" fill="#4fc0a8"/>
-  </svg>`;
+  </svg>`.replace(/#[0-9a-f]{6}/gi, c => W.theme ? W.theme.col(c) : c);
 };

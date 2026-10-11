@@ -52,7 +52,8 @@ W.tree = (() => {
   const STARS = Array.from({ length: 40 }, () => [R(), R() * 0.5, R() * 1.2 + 0.4, R() * 6]);
   const DOTS = Array.from({ length: 120 }, () => [R() * 1000 - 300, GROUND + 10 + R() * (SH - GROUND - 40), R() < 0.15 ? 2.5 + R() * 3 : 0.8 + R() * 1.4, R() < 0.15]);
 
-  const C = {
+  // Grundpalette in Blau; js/theme.js verschiebt sie auf die Lieblingsfarbe
+  const C0 = {
     trunk: ['#1f4c93', '#285aa6', '#3469b7'],
     leaf: ['#2a6fdb', '#3b82e6', '#4f93ee', '#2563c9', '#5d9ef0', '#1f5fc6'],
     leafDry: ['#7e98b9', '#8ea6c4', '#6f8aae', '#9db1cb'],
@@ -61,6 +62,10 @@ W.tree = (() => {
     vein: '#173f80', root: '#2c5aa0', line: '#2d66c2',
     soilTop: '#cfe2f8', soilBot: '#b8d2f0', dot: '#a6c4ec', water: '#8ec5f6'
   };
+  const TC = c => W.theme ? W.theme.col(c) : c;
+  const mapPal = p => Array.isArray(p) ? p.map(TC) : typeof p === 'string' ? TC(p) : Object.fromEntries(Object.entries(p).map(([k, v]) => [k, k === 'water' ? v : mapPal(v)]));
+  let C = C0, palVer = -1;
+  function palette() { const v = W.theme ? W.theme.ver : 0; if (v !== palVer) { palVer = v; C = mapPal(C0); } }
 
   // Rekursiv: a = Winkel zur Senkrechten (0 = nach oben, π = nach unten)
   function branch(n, x, y, a, len, w, G, T, isRoot, tips, segs, droop, box) {
@@ -139,10 +144,10 @@ W.tree = (() => {
   }
 
   function skyFor(hour) {
-    if (hour >= 21 || hour < 5) return { top: '#3a5a92', bot: '#7d9ccc', night: true, sun: '#f2f6ff', hill: ['#6f8fc4', '#7f9ed0'], bush: '#5b7fb9' };
-    if (hour < 8) return { top: '#d4e2fa', bot: '#eef1fb', sun: '#ffffff', hill: ['#bcd6f5', '#cadff7'], bush: '#94bdee' };
-    if (hour < 18) return { top: '#c9e3fb', bot: '#e6f2fd', sun: '#f6fbff', hill: ['#b6d4f4', '#c5def7'], bush: '#8db9ec' };
-    return { top: '#c3cbef', bot: '#e5e6f7', sun: '#fbf7ff', hill: ['#b2c6ee', '#c2d2f2'], bush: '#8eaee6' };
+    if (hour >= 21 || hour < 5) return { top: TC('#3a5a92'), bot: TC('#7d9ccc'), night: true, sun: TC('#f2f6ff'), hill: [TC('#6f8fc4'), TC('#7f9ed0')], bush: TC('#5b7fb9') };
+    if (hour < 8) return { top: TC('#d4e2fa'), bot: TC('#eef1fb'), sun: TC('#ffffff'), hill: [TC('#bcd6f5'), TC('#cadff7')], bush: TC('#94bdee') };
+    if (hour < 18) return { top: TC('#c9e3fb'), bot: TC('#e6f2fd'), sun: TC('#f6fbff'), hill: [TC('#b6d4f4'), TC('#c5def7')], bush: TC('#8db9ec') };
+    return { top: TC('#c3cbef'), bot: TC('#e5e6f7'), sun: TC('#fbf7ff'), hill: [TC('#b2c6ee'), TC('#c2d2f2')], bush: TC('#8eaee6') };
   }
 
   function mount(canvas, opts) {
@@ -162,6 +167,7 @@ W.tree = (() => {
     }
 
     function draw(time, now) {
+      palette();
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       const cw = canvas.clientWidth, ch = canvas.clientHeight;
       if (!cw || !ch) return;
@@ -199,7 +205,7 @@ W.tree = (() => {
       ctx.fillStyle = sg; ctx.fillRect(v.x - 5, v.y - 5, v.w + 10, GROUND - v.y + 6);
       if (S.night) STARS.forEach(([x, y, r, ph]) => {
         ctx.globalAlpha = 0.4 + 0.4 * Math.sin(T * 1.5 + ph);
-        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(v.x + x * v.w, v.y + y * (GROUND - v.y), r * v.w / 300, 0, 7); ctx.fill();
+        ctx.fillStyle = TC('#ffffff'); ctx.beginPath(); ctx.arc(v.x + x * v.w, v.y + y * (GROUND - v.y), r * v.w / 300, 0, 7); ctx.fill();
       });
       ctx.globalAlpha = 1;
       // Landschaft in fester Größe: wächst der Baum, wird er im Vergleich zu Hügeln und Wolken sichtbar größer
@@ -207,7 +213,7 @@ W.tree = (() => {
       ctx.fillStyle = S.sun;
       ctx.beginPath(); ctx.arc(v.x + v.w * 0.84, v.y + (GROUND - v.y) * 0.24, 17 * u, 0, 7); ctx.fill();
       if (S.night) { ctx.fillStyle = S.top; ctx.beginPath(); ctx.arc(v.x + v.w * 0.84 - 7 * u, v.y + (GROUND - v.y) * 0.24 - 4 * u, 14 * u, 0, 7); ctx.fill(); }
-      const cloudA = S.night ? 'rgba(255,255,255,.25)' : '#ffffff';
+      const cloudA = S.night ? 'rgba(255,255,255,.25)' : TC('#ffffff');
       cloud(v.x + ((0.12 + T * 0.006) % 1.3 - 0.15) * v.w, v.y + (GROUND - v.y) * 0.2, u * 1.1, cloudA);
       cloud(v.x + ((0.62 + T * 0.004) % 1.3 - 0.15) * v.w, v.y + (GROUND - v.y) * 0.3, u * 0.65, cloudA);
       cloud(v.x + ((0.33 + T * 0.005) % 1.3 - 0.15) * v.w, v.y + (GROUND - v.y) * 0.4, u * 0.55, cloudA);
@@ -291,10 +297,10 @@ W.tree = (() => {
             const fx = tp.x + (tp.j[2] - 0.5) * tp.r * 0.8, fy = tp.y + tp.r * 0.3, fr2 = 3 + size * 2.4;
             ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.9)'; ctx.shadowBlur = 8;
             const g2 = ctx.createRadialGradient(fx - fr2 * 0.35, fy - fr2 * 0.35, 0.3, fx, fy, fr2);
-            g2.addColorStop(0, '#ffffff'); g2.addColorStop(1, '#cfe6ff');
+            g2.addColorStop(0, TC('#ffffff')); g2.addColorStop(1, TC('#cfe6ff'));
             ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(fx, fy, fr2, 0, 7); ctx.fill();
             ctx.restore();
-            ctx.strokeStyle = '#2a6fdb'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.arc(fx, fy, fr2, 0, 7); ctx.stroke();
+            ctx.strokeStyle = TC('#2a6fdb'); ctx.lineWidth = 0.9; ctx.beginPath(); ctx.arc(fx, fy, fr2, 0, 7); ctx.stroke();
           }
         }
       }
@@ -314,7 +320,7 @@ W.tree = (() => {
       sparkle.forEach(p => {
         p.life -= 0.016; p.y -= 0.5;
         const px = v.x + p.x * v.w, py = lerp(box.minY, GROUND, p.y0) + p.y * u;
-        ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = TC('#ffffff');
         star(px, py, (2 + p.s * 2.5) * u);
       });
       ctx.globalAlpha = 1;
@@ -331,7 +337,7 @@ W.tree = (() => {
       sproutSpace(sp);
       ctx.translate(736, 798); ctx.scale(1, sp.p); ctx.translate(-736, -798);
       ctx.lineCap = 'round';
-      ctx.strokeStyle = o.thirsty ? '#a9bdd4' : '#7fb3f3';
+      ctx.strokeStyle = o.thirsty ? TC('#a9bdd4') : TC('#7fb3f3');
       ctx.lineWidth = 8;
       ctx.beginPath(); ctx.moveTo(736, 796);
       ctx.bezierCurveTo(754, 826, 754, 852, 744, 876);
@@ -346,7 +352,7 @@ W.tree = (() => {
       ctx.translate(650, 722); ctx.scale(sp.e, sp.e); ctx.rotate(Math.sin(T * 1.1) * 0.025); ctx.translate(-650, -722);
       // Stängel
       const sg = ctx.createLinearGradient(0, 520, 0, 722);
-      sg.addColorStop(0, dry ? '#4d6585' : '#1d4690'); sg.addColorStop(1, dry ? '#3d536f' : '#0f2c63');
+      sg.addColorStop(0, dry ? TC('#4d6585') : TC('#1d4690')); sg.addColorStop(1, dry ? TC('#3d536f') : TC('#0f2c63'));
       ctx.fillStyle = sg;
       ctx.beginPath();
       ctx.moveTo(637, 768); ctx.bezierCurveTo(638, 660, 639, 600, 640, 556);
@@ -359,7 +365,7 @@ W.tree = (() => {
       ctx.translate(650, 520); ctx.rotate(Math.sin(T * 1.6 + 1) * 0.04); ctx.translate(-650, -520);
       // linkes Blatt
       const lg = ctx.createLinearGradient(480, 380, 650, 512);
-      lg.addColorStop(0, dry ? '#93a8c3' : '#4f95ff'); lg.addColorStop(1, dry ? '#7088a8' : '#1f6fe8');
+      lg.addColorStop(0, dry ? TC('#93a8c3') : TC('#4f95ff')); lg.addColorStop(1, dry ? TC('#7088a8') : TC('#1f6fe8'));
       ctx.fillStyle = lg;
       ctx.beginPath();
       ctx.moveTo(652, 532); ctx.bezierCurveTo(634, 456, 594, 398, 481, 377);
@@ -374,7 +380,7 @@ W.tree = (() => {
       ctx.restore();
       // rechtes Blatt
       const rg = ctx.createLinearGradient(830, 374, 652, 512);
-      rg.addColorStop(0, dry ? '#869cb9' : '#2a78ee'); rg.addColorStop(1, dry ? '#667f9f' : '#1a5fd2');
+      rg.addColorStop(0, dry ? TC('#869cb9') : TC('#2a78ee')); rg.addColorStop(1, dry ? TC('#667f9f') : TC('#1a5fd2'));
       ctx.fillStyle = rg;
       ctx.beginPath();
       ctx.moveTo(648, 532); ctx.bezierCurveTo(678, 444, 742, 386, 831, 374);
@@ -385,7 +391,7 @@ W.tree = (() => {
       // zwei Samenhälften am Boden
       const seed = (cx, cy, rx, ry, rot) => {
         const g = ctx.createRadialGradient(cx - rx * 0.35, cy - ry * 0.45, 2, cx, cy, rx * 1.1);
-        g.addColorStop(0, dry ? '#7b8fa9' : '#5a7bbd'); g.addColorStop(1, dry ? '#4f6380' : '#2f4f8f');
+        g.addColorStop(0, dry ? TC('#7b8fa9') : TC('#5a7bbd')); g.addColorStop(1, dry ? TC('#4f6380') : TC('#2f4f8f'));
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, rot, 0, 7); ctx.fill();
       };

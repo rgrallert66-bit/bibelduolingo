@@ -39,5 +39,14 @@ window.W = window.W || {};
     chevron: '<path d="m9 5 7 7-7 7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>'
   };
-  W.icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[name] || ''}</svg>`;
+  // Blautöne folgen der Lieblingsfarbe (js/theme.js); Wasser bleibt blau
+  const KEEP = { drop: 1, dropOff: 1 };
+  let cache = {}, ver = -1;
+  function paint(name) {
+    const v = W.theme ? W.theme.ver : 0;
+    if (v !== ver) { cache = {}; ver = v; }
+    if (!(name in cache)) cache[name] = KEEP[name] || !W.theme ? (I[name] || '') : (I[name] || '').replace(/#[0-9a-f]{6}/gi, W.theme.col);
+    return cache[name];
+  }
+  W.icon = (name, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${paint(name)}</svg>`;
 })();

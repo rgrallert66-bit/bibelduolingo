@@ -1,7 +1,9 @@
 // Baut eine einzelne HTML-Datei mit eingebettetem CSS und JS.
 // Aufruf: node tools/build-single.mjs [ausgabe.html] [--fragment]
 // --fragment lässt <html>/<head>/<body> weg (für Einbettungen, die das Gerüst selbst liefern).
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+// Die ganze Bibel (data/bibel.js, ca. 4 MB) bleibt eine eigene Datei und wird neben die Ausgabe kopiert;
+// sie wird erst beim Suchen nachgeladen.
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -22,4 +24,6 @@ if (fragment) {
 }
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
+mkdirSync(join(dirname(out), 'data'), { recursive: true });
+copyFileSync(join(root, 'data/bibel.js'), join(dirname(out), 'data/bibel.js'));
 console.log('geschrieben:', out, Math.round(html.length / 1024) + ' KB');

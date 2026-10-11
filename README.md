@@ -6,10 +6,14 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 ## So funktioniert’s
 
 - **Level für Level:** Der Lernpfad beginnt bei Level 1 und geht immer weiter. Für jedes Level wählst du selbst den Vers:
-  aus Vorschlägen (die bekanntesten und schönsten Verse zuerst), über die Suche (Wort oder Bibelstelle) oder nach Themen.
+  aus Vorschlägen (die bekanntesten und schönsten Verse zuerst), über die Suche in der **ganzen Bibel** oder nach Themen.
+  Das Auswahlfenster zeigt jeden Vers vollständig.
   Eigene Verse in beliebiger Übersetzung lassen sich ebenfalls wählen. Ein Level ist geschafft, wenn sein Vers sitzt (3 Lektionen: kennenlernen, festigen, meistern);
   danach öffnet sich das nächste Level. Je 5 Level bilden einen Abschnitt mit Schatztruhe (nach 3 Leveln) und gemischter Wiederholung (nach 5 Leveln).
-- **114 Verse** in 9 Themen (Grundlagen, Vertrauen, Mut, Liebe, Licht & Segen, Tief verwurzelt, Freude, Hoffnung, Gnade), darunter Vaterunser und Aaronitischer Segen.
+- **Die ganze Bibel durchsuchen:** alle rund 31.000 Verse, nach Wort („Hirte“, „Gnade genügt“) oder nach Stelle („Joh 3,16“, „Psalm 23“, „1. Mose 1,1-3“).
+  Bei einer Stelle mit Bereich lässt sich der ganze Abschnitt als ein Lernvers wählen (bis 90 Wörter). Die Bibel wird erst beim ersten Suchen geladen.
+- **Lieblingsfarbe:** Blau, Grün, Lila, Gelb oder Rot (Profil → Einstellungen). Die ganze App samt Baum wechselt die Farbe.
+- **114 ausgewählte Verse** in 9 Themen (Grundlagen, Vertrauen, Mut, Liebe, Licht & Segen, Tief verwurzelt, Freude, Hoffnung, Gnade), darunter Vaterunser und Aaronitischer Segen.
 - **Lernmethode Anfangsbuchstaben:** Zuerst liest du den Vers. Dann fehlen einige Wörter, und du tippst nur den ersten Buchstaben jedes fehlenden Wortes.
   Runde für Runde verschwinden mehr Wörter (25 % → 50 % → 75 %), zuletzt der ganze Vers. Diese letzte Runde wiederholt sich, bis sie ohne einen einzigen Fehler gelingt;
   nach Fehlern siehst du den Vers kurz noch einmal. Ein Vers hat 3 Lektionen: Lektion 1 beginnt bei 25 %, Lektion 2 bei 50 %, Lektion 3 direkt ganz aus dem Gedächtnis.
@@ -50,7 +54,10 @@ node tools/build-single.mjs dist/glaubensbaum.html
 
 | Datei | Inhalt |
 |---|---|
-| `js/verses.js` | Einheiten und Verse |
+| `js/verses.js` | Einheiten und ausgewählte Verse |
+| `js/bible.js` | Suche in der ganzen Bibel (lädt `data/bibel.js` bei Bedarf) |
+| `data/bibel.js` | Elberfelder 1905, deutsche Verszählung; erzeugt mit `tools/build-bible.py` |
+| `js/theme.js` | Lieblingsfarben: verschiebt alle Blautöne auf die gewählte Farbe |
 | `js/store.js` | Spielstand, Serie, Baumwachstum, Wiederholungsplan, Aufgaben, Erfolge |
 | `js/tree.js` | Der Baum, gezeichnet auf `<canvas>` |
 | `js/exercises.js` | Anfangsbuchstaben-Runden und Ablauf der Lektionen |
@@ -59,3 +66,5 @@ node tools/build-single.mjs dist/glaubensbaum.html
 | `js/sound.js` | Töne und Vorlesen |
 
 Bibeltext: Elberfelder Bibel 1905 (unrevidiert, gemeinfrei). Der Gottesname „Jehova“ ist als „HERR“ wiedergegeben, die Rechtschreibung ist angepasst (daß → dass). Die revidierte Elberfelder (1985/2006) ist urheberrechtlich geschützt und deshalb nicht enthalten; eigene Verse in jeder Übersetzung lassen sich in der App selbst hinzufügen.
+
+Die ganze Bibel für die Suche stammt aus [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases) (`GerElb1905`) und wird mit `python3 -I tools/build-bible.py GerElb1905.json data/bibel.js` umgewandelt: Versnummern nach deutscher Zählung, „Jehova“ → „HERR“ mit passendem Artikel, ß → ss nach kurzem Vokal. Die Umwandlung geschieht nach Regeln; in seltenen Fällen kann eine Formulierung holpern.
