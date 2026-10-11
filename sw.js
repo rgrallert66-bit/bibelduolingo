@@ -1,9 +1,10 @@
-/* Offline-Unterstützung: App-Dateien zwischenspeichern. */
-const CACHE = 'glaubensbaum-v2';
+/* Offline-Unterstützung: alle App-Dateien samt Bibel und Schrift zwischenspeichern. */
+const CACHE = 'glaubensbaum-v3';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css', 'icons/icon.svg', 'icons/icon-192.png',
   'js/verses.js', 'js/theme.js', 'js/icons.js', 'js/mascot.js', 'js/sound.js', 'js/store.js', 'js/tree.js',
-  'js/bible.js', 'js/exercises.js', 'js/lesson.js', 'js/ui.js', 'js/app.js'
+  'js/bible.js', 'js/exercises.js', 'js/lesson.js', 'js/ui.js', 'js/app.js',
+  'fonts/lexend-latin.woff2', 'icons/icon-512.png', 'data/bibel.js'   // die ganze Bibel, damit die Suche auch offline geht
 ];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

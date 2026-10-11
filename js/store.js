@@ -46,8 +46,10 @@ W.store = (() => {
   function load() {
     let st = defaults();
     try {
-      const raw = localStorage.getItem(KEY);
+      // W.SEED: Fortschritt, der beim Herunterladen der Offline-Datei mitgegeben wurde (nur beim ersten Öffnen)
+      const raw = localStorage.getItem(KEY) || (W.SEED ? JSON.stringify(W.SEED) : null);
       if (raw) st = Object.assign(defaults(), JSON.parse(raw));
+      if (raw && !localStorage.getItem(KEY)) localStorage.setItem(KEY, raw);
     } catch (e) {}
     registerCustom(st.custom);
     if (!Array.isArray(st.levels)) st.levels = [];
@@ -105,6 +107,13 @@ W.store = (() => {
   const get = () => s;
   function set(patch) { Object.assign(s, patch); save(); }
   function reset() { s = defaults(); registerCustom([]); save(); }
+  // Gesicherten Fortschritt (JSON) übernehmen; gibt false zurück, wenn die Datei nicht passt
+  function importState(obj) {
+    if (!obj || typeof obj !== 'object' || typeof obj.progress !== 'object' || !Array.isArray(obj.levels)) return false;
+    try { localStorage.setItem(KEY, JSON.stringify(obj)); } catch (e) { return false; }
+    s = load(); save();
+    return true;
+  }
 
   // ---------- Fortschritt ----------
   const stageOf = id => s.progress[id] || 0;
@@ -415,7 +424,7 @@ W.store = (() => {
     setToday: k => { todayOverride = k; },
     STAGES, FREEZE_PRICE, MAX_FREEZES, CHEST_GEMS, UNIT_GEMS, ACHIEVEMENTS,
     stageOf, isMastered, masteredCount, startedVerses, totalDays, learnedToday, xpToday,
-    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, pendingTest, pickOld, TEST_EVERY, allVerses, unitOf, addCustom, addBibleVerse, removeCustom, growth, rootGrowth, treeStage,
+    GROW_DAYS, pathNodes, currentNode, focusId, focusVerse, setFocus, currentLevel, levelVerse, levelOfVerse, setLevelVerse, suggestions, levelList, SECTION_SIZE, pendingTest, pickOld, TEST_EVERY, allVerses, unitOf, addCustom, addBibleVerse, removeCustom, importState, growth, rootGrowth, treeStage,
     checkStreak, strength, dueVerses, quests, checkAchievements, finishLesson, openChest, buyFreeze
   };
 })();

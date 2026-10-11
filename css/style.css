@@ -1,5 +1,8 @@
 /* Glaubensbaum – Pastell-Blau, flache runde Karten, kräftige runde Schrift.
    Bewusst ein einziges helles Erscheinungsbild (wie im Entwurf), daher keine Dunkel-Variante. */
+/* Schrift Lexend (SIL Open Font License, fonts/OFL.txt), lokal eingebunden, damit die App auch offline gleich aussieht */
+@font-face { font-family: 'Lexend'; src: url(../fonts/lexend-latin.woff2) format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+
 :root {
   /* Layout: eine Handy-Spalte, Karten übereinander, Tab-Leiste unten */
   --bg: #e9f3fd;
@@ -677,6 +680,13 @@ p { margin: 0; }
 .lw.got .lw-core { animation: glowSweep .7s ease-out; border-radius: 6px; }
 .lw.missed { animation: wordIn .35s ease-out both; }
 .lw.wave { animation: wave .5s ease-in-out both; }
+/* komplett unsichtbar: noch nicht getippte Wörter nehmen keinen Platz ein, nur ein gleich breiter Schreibstrich */
+.scripture.blind { min-height: 7.4em; }
+.scripture.blind .lw.hid { display: none; }
+.bcaret { display: inline-block; width: 1.6em; height: 1.05em; vertical-align: -0.12em; border-bottom: 3px solid var(--primary); border-radius: 2px; background: rgb(var(--p-rgb) / .12); animation: caret 1s infinite; }
+.bcaret.err { animation: curErr .35s; }
+.round-meter.blind i.on { background: var(--primary); }
+.round-meter.blind b { color: var(--label); }
 .spark { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--primary-3); pointer-events: none; animation: spark .62s cubic-bezier(.2, .8, .3, 1) forwards; box-shadow: 0 0 6px rgb(var(--p3-rgb) / .8); }
 .spark:nth-of-type(2n) { background: #ffd36b; box-shadow: 0 0 6px rgba(255, 211, 107, .8); width: 5px; height: 5px; }
 .key.hit { animation: keyHit .32s ease-out; }

@@ -55,10 +55,15 @@ W.app = (() => {
     }
   });
 
+  // „Als App installieren“ (Chrome, Edge): Angebot des Browsers merken und im Profil anbieten
+  const showInProfile = () => { if (W.ui.tab === 'profile' && !document.querySelector('.screen')) W.ui.refresh(); };
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); W.installPrompt = e; showInProfile(); });
+  window.addEventListener('appinstalled', () => { W.installPrompt = null; showInProfile(); });
+
   // Töne erst nach der ersten Berührung freischalten
   document.addEventListener('pointerdown', () => W.sound.init(), { once: true });
 
-  if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && !/claude|anthropic/.test(location.hostname)) {
+  if ('serviceWorker' in navigator && !W.SINGLE_FILE && /^https?:/.test(location.protocol) && !/claude|anthropic/.test(location.hostname)) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 

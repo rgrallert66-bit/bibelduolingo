@@ -37,6 +37,7 @@ window.W = window.W || {};
     gear: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm8.4 5-1.9-.3a6.8 6.8 0 0 1-.7 1.6l1.1 1.6-1.6 1.6-1.6-1.1c-.5.3-1 .5-1.6.7l-.3 1.9h-2.4l-.3-1.9a6.8 6.8 0 0 1-1.6-.7l-1.6 1.1-1.6-1.6 1.1-1.6c-.3-.5-.5-1-.7-1.6l-1.9-.3v-2.4l1.9-.3c.2-.6.4-1.1.7-1.6L4.6 6.8l1.6-1.6 1.6 1.1c.5-.3 1-.5 1.6-.7l.3-1.9h2.4l.3 1.9c.6.2 1.1.4 1.6.7l1.6-1.1 1.6 1.6-1.1 1.6c.3.5.5 1 .7 1.6l1.9.3z" fill="currentColor"/>',
     repeat: '<path d="M4 11V9.5A3.5 3.5 0 0 1 7.5 6H18m-3-3 3 3-3 3M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H6m3 3-3-3 3-3" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     chevron: '<path d="m9 5 7 7-7 7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+    download: '<path d="M12 3.5v11m-4.6-4.6L12 14.5l4.6-4.6M4.5 17v3h15v-3" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
     play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>'
   };
   // Blautöne folgen der Lieblingsfarbe (js/theme.js); Wasser bleibt blau

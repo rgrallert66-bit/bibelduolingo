@@ -780,6 +780,45 @@ W.ui = (() => {
   }
 
   // ---------- Profil ----------
+  // Datei speichern: im Claude-Artefakt über die Download-Freigabe, sonst als normaler Browser-Download
+  async function saveFile(filename, data, type) {
+    const blob = data instanceof Blob ? data : new Blob([data], { type });
+    let dl = null;
+    try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) {}
+    if (dl) {
+      try { await dl.save({ filename, data: blob }); return true; }
+      catch (e) {
+        if (e && e.code !== 'declined') toast(`${W.icon('close')}<div><b>Speichern geht hier gerade nicht</b><small>${esc(e.message || '')}</small></div>`);
+        return false;
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    return true;
+  }
+
+  // Offline-App: die fertige Einzeldatei (tools/build-single.mjs) holen und den Fortschritt hineinlegen
+  async function downloadOffline(btn) {
+    btn.disabled = true;
+    try {
+      const r = await fetch('glaubensbaum-offline.html');
+      if (!r.ok) throw new Error(r.status);
+      let html = await r.text();
+      const seed = JSON.stringify(st.get()).replace(/</g, '\\u003c');
+      html = html.replace('W.SEED = null; /*SEED*/', () => `W.SEED = ${seed};`);
+      if (await saveFile('Glaubensbaum.html', new Blob([html], { type: 'text/html' }), 'text/html')) {
+        W.sound.play('achieve');
+        toast(`${W.icon('download')}<div><b>Offline-App gespeichert</b><small>Öffne „Glaubensbaum.html“ per Doppelklick, auch ohne Internet.</small></div>`);
+      }
+    } catch (e) {
+      W.sound.play('miss');
+      toast(`${W.icon('close')}<div><b>Download gerade nicht möglich</b><small>Die Offline-Datei wird mit „node tools/build-single.mjs“ erzeugt.</small></div>`);
+    }
+    btn.disabled = false;
+  }
+
   function renderProfile(view) {
     const s = S();
     const since = st.parse(s.created).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
@@ -816,6 +855,24 @@ W.ui = (() => {
         <div class="si-body"><b>Regenwolke</b><span>Gießt deinen Baum an einem Tag, an dem du nicht lernst. Deine Serie bleibt erhalten. Du hast ${s.freezes} / ${st.MAX_FREEZES}.</span></div>
         <button class="btn primary buy" ${s.freezes >= st.MAX_FREEZES ? 'disabled' : ''}>${st.FREEZE_PRICE} ${W.icon('gem')}</button>
       </div>
+      <h3 class="sec-title">App auf deinem Computer</h3>
+      ${W.OFFLINE_FILE ? `<div class="shop-item">
+        <div class="si-ic">${W.icon('check')}</div>
+        <div class="si-body"><b>Du nutzt die Offline-App</b><span>Alles läuft ohne Internet, auch die Suche in der ganzen Bibel. Dein Fortschritt wird in diesem Browser gespeichert. Sichere ihn ab und zu, unten mit „Fortschritt sichern“.</span></div>
+      </div>` : `<div class="shop-item">
+        <div class="si-ic">${W.icon('download')}</div>
+        <div class="si-body"><b>Offline-App herunterladen</b><span>Eine einzige Datei mit allem, auch der ganzen Bibel (etwa 5 MB). Speichere sie auf deinem Desktop und öffne sie per Doppelklick, ganz ohne Internet. Dein Fortschritt kommt mit.</span></div>
+        <button class="btn primary dl-offline">${W.icon('download')} Laden</button>
+      </div>`}
+      ${W.installPrompt ? `<div class="shop-item">
+        <div class="si-ic">${W.icon('tree')}</div>
+        <div class="si-body"><b>Als App installieren</b><span>Eigenes Fenster und Symbol auf dem Desktop, funktioniert auch offline.</span></div>
+        <button class="btn primary install">Installieren</button>
+      </div>` : ''}
+      <div class="settings">
+        <button class="set-row backup"><span>Fortschritt sichern</span>${W.icon('download')}</button>
+        <label class="set-row restore"><span>Gesicherten Fortschritt laden</span>${W.icon('repeat')}<input type="file" accept=".json,application/json" hidden></label>
+      </div>
       <h3 class="sec-title">Einstellungen</h3>
       <div class="settings">
         <div class="set-row col"><span>Lieblingsfarbe</span><div class="color-row" role="radiogroup" aria-label="Lieblingsfarbe">${W.theme.LIST.map(t => `<button class="color-sw ${W.theme.id === t.id ? 'on' : ''}" data-color="${t.id}" role="radio" aria-checked="${W.theme.id === t.id}" style="--sw:${t.sw}"><i>${W.icon('check')}</i>${t.name}</button>`).join('')}</div></div>
@@ -827,6 +884,30 @@ W.ui = (() => {
       </div>
       <p class="fine">Bibeltext: Elberfelder Bibel 1905 (gemeinfrei); „Jehova“ als „HERR“ wiedergegeben, Rechtschreibung angepasst. Dein Fortschritt wird nur auf diesem Gerät gespeichert.</p>`;
     $('.buy', view).addEventListener('click', buyFreeze);
+    const dl = $('.dl-offline', view);
+    if (dl) dl.addEventListener('click', () => { W.sound.play('tap'); downloadOffline(dl); });
+    const inst = $('.install', view);
+    if (inst) inst.addEventListener('click', async () => {
+      W.sound.play('tap');
+      const p = W.installPrompt; W.installPrompt = null;
+      try { await p.prompt(); } catch (e) {}
+      refresh();
+    });
+    $('.backup', view).addEventListener('click', () => {
+      W.sound.play('tap');
+      saveFile(`glaubensbaum-fortschritt-${st.today()}.json`, JSON.stringify(st.get(), null, 1), 'application/json')
+        .then(ok => { if (ok) toast(`${W.icon('check')}<div><b>Fortschritt gesichert</b><small>Mit „Gesicherten Fortschritt laden“ holst du ihn zurück, auch in der Offline-App.</small></div>`); });
+    });
+    $('.restore input', view).addEventListener('change', e => {
+      const f = e.target.files[0]; e.target.value = '';
+      if (!f) return;
+      f.text().then(txt => {
+        let obj = null; try { obj = JSON.parse(txt); } catch (err) {}
+        if (!obj || !Array.isArray(obj.levels)) { W.sound.play('miss'); toast(`${W.icon('close')}<div><b>Das ist keine Sicherung</b><small>Wähle eine Datei „glaubensbaum-fortschritt-….json“.</small></div>`); return; }
+        confirm({ mood: 'normal', title: 'Fortschritt laden?', text: `Die Sicherung (${obj.levels.filter(Boolean).length} Level) ersetzt deinen jetzigen Fortschritt auf diesem Gerät.`, yes: 'Laden', no: 'Abbrechen',
+          onYes: () => { if (st.importState(obj)) { W.app.boot(); toast(`${W.icon('check')}<div><b>Fortschritt geladen</b></div>`); } else toast(`${W.icon('close')}<div><b>Laden hat nicht geklappt</b></div>`); } });
+      });
+    });
     view.querySelectorAll('.color-sw').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.color === W.theme.id) return;
       st.set({ color: b.dataset.color }); W.theme.apply(b.dataset.color);

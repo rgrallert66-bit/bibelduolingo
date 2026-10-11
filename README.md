@@ -18,6 +18,8 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
   Runde für Runde verschwinden mehr Wörter (25 % → 50 % → 75 %), zuletzt der ganze Vers. Diese letzte Runde wiederholt sich, bis sie ohne einen einzigen Fehler gelingt;
   nach Fehlern siehst du den Vers kurz noch einmal. Ein Vers hat 3 Lektionen: Lektion 1 beginnt bei 25 %, Lektion 2 bei 50 %, Lektion 3 direkt ganz aus dem Gedächtnis.
   Wiederholungen und Dauerschleife nutzen dieselbe Methode.
+- **Komplett unsichtbar:** Wer den Vers kann, tippt ihn auch einmal ganz ohne Hilfe: keine Lücken, keine Wortlängen, kein Hinweis, ob der Satz weitergeht oder schon fertig ist.
+  Nur die richtig getippten Wörter erscheinen. Diese Meisterrunde beendet jede dritte Lektion eines Verses (muss fehlerfrei sein), kommt in Zwischentests immer und in Wiederholungen und der Dauerschleife bei gemeisterten Versen ab und zu dran.
 - **Der Baum wächst von Tag zu Tag:** In den ersten 100 Lerntagen wächst er an jedem Lerntag gleichmäßig ein kleines, sichtbares Stück (danach langsamer weiter), nicht mit jeder weiteren Übung am selben Tag. Höhe und Wurzeltiefe werden realistisch angezeigt (Keimling: 10 cm hoch, 4 cm Wurzeln; nach einem Jahr: etwa 7,6 m hoch, 2,4 m Wurzeln).
   Die Wurzeln reichen tiefer, je länger deine Serie ist. Jeder gemeisterte Vers hängt als Frucht am Baum.
   Wenn du heute noch nicht gelernt hast, hat der Baum Durst.
@@ -31,7 +33,12 @@ Jeden Tag lernst du einen Vers, und dein **Glaubensbaum** wächst mit.
 
 Die App passt sich an: Auf dem Handy gibt es unten eine Tab-Leiste, auf dem PC links eine Seitenleiste und rechts eine Spalte mit Serie, Tagesziel und Tagesaufgaben. Lektionen lassen sich am PC komplett mit der Tastatur bedienen (1–4 wählen, Enter prüfen, Buchstaben tippen).
 
-Der Fortschritt wird nur lokal im Browser gespeichert (`localStorage`).
+Der Fortschritt wird nur lokal im Browser gespeichert (`localStorage`). Unter Profil → „Fortschritt sichern“ lässt er sich als Datei sichern und auf einem anderen Gerät oder in der Offline-App wieder laden.
+
+## Auf dem Computer und offline
+
+- **Offline-App als eine Datei:** Profil → „Offline-App herunterladen“ speichert `Glaubensbaum.html` (etwa 5 MB) mit allem darin: App, Schrift, Töne und die ganze Bibel. Per Doppelklick im Browser öffnen, ohne Internet. Der aktuelle Fortschritt wird beim Herunterladen mitgegeben.
+- **Als App installieren:** Über einen Webserver (z. B. GitHub Pages) bieten Chrome und Edge „Installieren“ an (auch im Profil). Der Service Worker speichert alle Dateien samt Bibel und Schrift, danach läuft die App komplett offline.
 
 ## Starten
 
@@ -50,6 +57,8 @@ Eine einzelne HTML-Datei mit allem darin erzeugen:
 node tools/build-single.mjs dist/glaubensbaum.html
 ```
 
+Daneben entstehen `dist/data/bibel.js` (wird bei Bedarf nachgeladen) und `dist/glaubensbaum-offline.html` (die komplette Offline-App mit eingebetteter Bibel).
+
 ## Aufbau
 
 | Datei | Inhalt |
@@ -57,6 +66,7 @@ node tools/build-single.mjs dist/glaubensbaum.html
 | `js/verses.js` | Einheiten und ausgewählte Verse |
 | `js/bible.js` | Suche in der ganzen Bibel (lädt `data/bibel.js` bei Bedarf) |
 | `data/bibel.js` | Elberfelder 1905, deutsche Verszählung; erzeugt mit `tools/build-bible.py` |
+| `fonts/` | Schrift Lexend (SIL Open Font License), lokal eingebunden |
 | `js/theme.js` | Lieblingsfarben: verschiebt alle Blautöne auf die gewählte Farbe |
 | `js/store.js` | Spielstand, Serie, Baumwachstum, Wiederholungsplan, Aufgaben, Erfolge |
 | `js/tree.js` | Der Baum, gezeichnet auf `<canvas>` |
