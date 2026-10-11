@@ -1,7 +1,8 @@
 /* Offline-Unterstützung: alle App-Dateien samt Bibel und Schrift zwischenspeichern. */
-const CACHE = 'glaubensbaum-v3';
+const CACHE = 'glaubensbaum-v4';
 const FILES = [
-  './', 'index.html', 'manifest.webmanifest', 'css/style.css', 'icons/icon.svg', 'icons/icon-192.png',
+  // „index.html“ fehlt mit Absicht: Cloudflare Pages leitet es auf „/“ um, und umgeleitete Antworten darf der Service Worker nicht ausliefern
+  './', 'manifest.webmanifest', 'css/style.css', 'icons/icon.svg', 'icons/icon-192.png',
   'js/verses.js', 'js/theme.js', 'js/icons.js', 'js/mascot.js', 'js/sound.js', 'js/store.js', 'js/tree.js',
   'js/bible.js', 'js/exercises.js', 'js/lesson.js', 'js/ui.js', 'js/app.js',
   'fonts/lexend-latin.woff2', 'icons/icon-512.png', 'data/bibel.js'   // die ganze Bibel, damit die Suche auch offline geht

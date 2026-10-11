@@ -40,6 +40,16 @@ Der Fortschritt wird nur lokal im Browser gespeichert (`localStorage`). Unter Pr
 - **Offline-App als eine Datei:** Profil → „Offline-App herunterladen“ speichert `Glaubensbaum.html` (etwa 5 MB) mit allem darin: App, Schrift, Töne und die ganze Bibel. Per Doppelklick im Browser öffnen, ohne Internet. Der aktuelle Fortschritt wird beim Herunterladen mitgegeben.
 - **Als App installieren:** Über einen Webserver (z. B. GitHub Pages) bieten Chrome und Edge „Installieren“ an (auch im Profil). Der Service Worker speichert alle Dateien samt Bibel und Schrift, danach läuft die App komplett offline.
 
+## Veröffentlichen (Cloudflare Pages)
+
+```bash
+node tools/build-site.mjs
+```
+
+erzeugt `dist/site/` mit allem, was auf den Server gehört (App, Bibel, Schrift, Service Worker, Offline-Datei, `_headers`).
+In Cloudflare unter *Workers & Pages → Erstellen → Pages → Assets hochladen* den Inhalt von `dist/site/` (oder ein ZIP davon) hochladen.
+Alternativ das Repository verbinden: Build-Befehl `node tools/build-site.mjs`, Ausgabeverzeichnis `dist/site`.
+
 ## Starten
 
 Keine Installation nötig: `index.html` im Browser öffnen.
